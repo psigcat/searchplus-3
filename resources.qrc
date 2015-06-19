@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/SearchPlus" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
