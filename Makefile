@@ -49,7 +49,7 @@ PY_FILES = \
 	__init__.py
 
 UI_SOURCES = $(wildcard ui/*.ui)
-UI_FILES=$(patsubst %.ui,%_ui.py,$(UI_SOURCES))
+COMPILED_UI_FILES=$(patsubst %.ui,%_ui.py,$(UI_SOURCES))
 
 EXTRAS = icon.png metadata.txt
 
@@ -72,9 +72,9 @@ QGISDIR=.qgis2
 
 default: compile
 
-compile: $(COMPILED_RESOURCE_FILES) $(UI_FILES)
+compile: $(COMPILED_RESOURCE_FILES) $(COMPILED_UI_FILES)
 
-$(UI_FILES): %_ui.py: %.ui
+$(COMPILED_UI_FILES): %_ui.py: %.ui
 	pyuic4 -o $@ $<
 
 %_rc.py : %.qrc $(RESOURCES_SRC)
@@ -111,7 +111,8 @@ deploy: compile doc transcompile
 	# $HOME/$(QGISDIR)/python/plugins
 	mkdir -p $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vf $(PY_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
-	cp -vf $(UI_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
+	cp -vf $(UI_SOURCES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/ui
+	cp -vf $(COMPILED_UI_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/ui
 	cp -vf $(COMPILED_RESOURCE_FILES) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vf $(EXTRAS) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr i18n $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
