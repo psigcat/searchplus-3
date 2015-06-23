@@ -18,11 +18,17 @@
  *                                                                         *
  ***************************************************************************/
 """
+# 2To3 python compatibility
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import qgis
 from PyQt4.QtCore import (QSettings, 
                           QTranslator, 
                           qVersion, 
                           QCoreApplication,
-                          Qt)
+                          Qt,
+                          QSettings)
 from PyQt4.QtGui import (QAction, 
                          QIcon,
                          QDockWidget)
@@ -48,6 +54,7 @@ class SearchPlus:
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
+        self.pluginName = os.path.basename(self.plugin_dir)
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
@@ -62,26 +69,16 @@ class SearchPlus:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
         
-        # Create the dock widget (after translation) and dock it
-        # destroy and recreate it if dockwidget is already available
-        # this is necessary because dock widget is docked when created
-        dialog = self.iface.mainWindow().findChild(QDockWidget, 'searchPlusDockWidget')
-        if dialog:
-            dialog.deleteLater()
-            del dialog
-        
-        self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
-        if not self.dlg.isVisible():
-            self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
-            self.dlg.show()
-
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&searchplus')
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'SearchPlus')
         self.toolbar.setObjectName(u'SearchPlus')
-
+        
+        # create dockwidget when initialization is completed
+        #self.iface.initializationCompleted.connect(self.run)
+    
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
@@ -181,6 +178,10 @@ class SearchPlus:
             callback=self.run,
             parent=self.iface.mainWindow())
 
+        # Create the dock widget and dock it but hide it waiting the ond of qgis loading
+        self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
+        self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
+        self.dlg.setVisible(False)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -198,5 +199,10 @@ class SearchPlus:
 
 
     def run(self):
-        """Run method that performs all the real work"""
-        pass
+        """Run method activated byt the toolbar action button"""
+        if self.dlg and not self.dlg.isVisible():
+            # check if the plugin is active
+            if not self.pluginName in qgis.utils.active_plugins:
+                return
+            
+            self.dlg.show()
