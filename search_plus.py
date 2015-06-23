@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- SearchPlus
-                                 A QGIS plugin
- Toponomastic searcher
+ SearchPlus - A QGIS plugin Toponomastic searcher
                               -------------------
         begin                : 2015-06-19
         git sha              : $Format:%H$
@@ -20,12 +18,18 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon
+from PyQt4.QtCore import (QSettings, 
+                          QTranslator, 
+                          qVersion, 
+                          QCoreApplication,
+                          Qt)
+from PyQt4.QtGui import (QAction, 
+                         QIcon,
+                         QDockWidget)
 # Initialize Qt resources from file resources.py
 import resources_rc
 # Import the code for the dialog
-from search_plus_dialog import SearchPlusDialog
+from search_plus_dockwidget import SearchPlusDockWidget
 import os.path
 
 
@@ -57,9 +61,19 @@ class SearchPlus:
 
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
-
-        # Create the dialog (after translation) and keep reference
-        self.dlg = SearchPlusDialog()
+        
+        # Create the dock widget (after translation) and dock it
+        # destroy and recreate it if dockwidget is already available
+        # this is necessary because dock widget is docked when created
+        dialog = self.iface.mainWindow().findChild(QDockWidget, 'searchPlusDockWidget')
+        if dialog:
+            dialog.deleteLater()
+            del dialog
+        
+        self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
+        if not self.dlg.isVisible():
+            self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
+            self.dlg.show()
 
         # Declare instance attributes
         self.actions = []
@@ -177,16 +191,12 @@ class SearchPlus:
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
+        
+        if self.dlg:
+            self.dlg.deleteLater()
+            del self.dlg
 
 
     def run(self):
         """Run method that performs all the real work"""
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        pass
