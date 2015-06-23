@@ -69,6 +69,10 @@ class SearchPlus:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
         
+        # load local settings of the plugin
+        settingFile = os.path.join(self.plugin_dir, 'config', 'config.properties')
+        self.settings = QSettings(settingFile, QSettings.IniFormat)
+        
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&searchplus')
