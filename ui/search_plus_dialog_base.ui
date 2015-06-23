@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>379</width>
+    <width>347</width>
     <height>209</height>
    </rect>
   </property>
@@ -17,7 +17,7 @@
    <bool>true</bool>
   </property>
   <property name="features">
-   <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   <set>QDockWidget::AllDockWidgetFeatures</set>
   </property>
   <property name="allowedAreas">
    <set>Qt::AllDockWidgetAreas</set>
