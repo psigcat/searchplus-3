@@ -72,7 +72,8 @@ QGISDIR=.qgis2
 
 default: compile
 
-compile: $(COMPILED_RESOURCE_FILES) $(COMPILED_UI_FILES)
+#compile: $(COMPILED_RESOURCE_FILES) $(COMPILED_UI_FILES)
+compile: $(COMPILED_RESOURCE_FILES)
 
 $(COMPILED_UI_FILES): %_ui.py: %.ui
 	pyuic4 -o $@ $<
