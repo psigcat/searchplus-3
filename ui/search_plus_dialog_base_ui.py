@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/search_plus_dialog_base.ui'
 #
-# Created: Wed Jun 24 13:21:14 2015
+# Created: Wed Jun 24 13:22:13 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -170,7 +170,7 @@ class Ui_searchPlusDockWidget(object):
         searchPlusDockWidget.setWidget(self.contents)
 
         self.retranslateUi(searchPlusDockWidget)
-        self.searchPlusTabMain.setCurrentIndex(4)
+        self.searchPlusTabMain.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(searchPlusDockWidget)
 
     def retranslateUi(self, searchPlusDockWidget):
