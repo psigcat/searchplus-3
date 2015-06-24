@@ -38,7 +38,7 @@
        <locale language="Catalan" country="Spain"/>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>4</number>
       </property>
       <widget class="QWidget" name="searchPlusStreetsTab">
        <attribute name="title">
@@ -50,7 +50,7 @@
           <item>
            <widget class="QLabel" name="lblStreet">
             <property name="text">
-             <string>    Carrer:</string>
+             <string>Carrer:</string>
             </property>
            </widget>
           </item>
@@ -120,7 +120,7 @@
           <item>
            <widget class="QLabel" name="lblType">
             <property name="text">
-             <string>             Tipus:</string>
+             <string>Tipus:</string>
             </property>
            </widget>
           </item>

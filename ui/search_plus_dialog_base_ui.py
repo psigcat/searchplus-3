@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/search_plus_dialog_base.ui'
 #
-# Created: Wed Jun 24 13:02:43 2015
+# Created: Wed Jun 24 13:21:14 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -170,17 +170,17 @@ class Ui_searchPlusDockWidget(object):
         searchPlusDockWidget.setWidget(self.contents)
 
         self.retranslateUi(searchPlusDockWidget)
-        self.searchPlusTabMain.setCurrentIndex(0)
+        self.searchPlusTabMain.setCurrentIndex(4)
         QtCore.QMetaObject.connectSlotsByName(searchPlusDockWidget)
 
     def retranslateUi(self, searchPlusDockWidget):
         searchPlusDockWidget.setWindowTitle(_translate("searchPlusDockWidget", "Cercadors", None))
-        self.lblStreet.setText(_translate("searchPlusDockWidget", "    Carrer:", None))
+        self.lblStreet.setText(_translate("searchPlusDockWidget", "Carrer:", None))
         self.lblNumber.setText(_translate("searchPlusDockWidget", "Número:", None))
         self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusStreetsTab), _translate("searchPlusDockWidget", "Carrerer", None))
         self.lblTopo.setText(_translate("searchPlusDockWidget", "Desplegueu per seleccionar un topònim; escriviu per constrènyer la cerca (per exemple, \"can\"):", None))
         self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusToponimsTab), _translate("searchPlusDockWidget", "Topònims", None))
-        self.lblType.setText(_translate("searchPlusDockWidget", "             Tipus:", None))
+        self.lblType.setText(_translate("searchPlusDockWidget", "Tipus:", None))
         self.lblEquipment.setText(_translate("searchPlusDockWidget", "Equipament:", None))
         self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusEquipmentsTab), _translate("searchPlusDockWidget", "Equipaments", None))
         self.lblCadastre.setText(_translate("searchPlusDockWidget", "Introduïu la referència cadastral i premeu Acceptar (exemple: \'5123501DF1952S\'):", None))
