@@ -27,8 +27,7 @@ from PyQt4.QtCore import (QSettings,
                           QTranslator, 
                           qVersion, 
                           QCoreApplication,
-                          Qt,
-                          QSettings)
+                          Qt)
 from PyQt4.QtGui import (QAction, 
                          QIcon,
                          QDockWidget)
@@ -37,7 +36,6 @@ import resources_rc
 # Import the code for the dialog
 from search_plus_dockwidget import SearchPlusDockWidget
 import os.path
-
 
 class SearchPlus:
     """QGIS Plugin Implementation."""
@@ -72,6 +70,7 @@ class SearchPlus:
         # load local settings of the plugin
         settingFile = os.path.join(self.plugin_dir, 'config', 'config.properties')
         self.settings = QSettings(settingFile, QSettings.IniFormat)
+        self.settings.setIniCodec("UTF-8")
         
         # Declare instance attributes
         self.actions = []
@@ -178,7 +177,7 @@ class SearchPlus:
         icon_path = ':/plugins/SearchPlus/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Toponomastic searcher'),
+            text=self.tr(u'Cercador toponomàstica'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
