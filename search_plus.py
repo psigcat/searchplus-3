@@ -209,3 +209,7 @@ class SearchPlus:
                 return
             
             self.dlg.show()
+        
+        randomList = ['Merilyn Mcdonald', 'Angeline Langston', 'Rogelio Locust', 'Laura Henshaw', 'Tawanna Criado', 'Tamiko Hysmith', 'Chrissy Mazer', 'Maryland Blassingame', 'Johnette Mera', 'Vasiliki Launer', 'Trevor Cottle', 'Vicenta Gaut', 'Lavona Uhrig', 'Colton Lyke', 'Russel Hoye', 'Mayola Fullilove', 'Caterina Gabriele', 'Sanford Delisa', 'Coy Kinsley', 'Diedre Luciano', 'Gaynelle Debusk', 'Sonja Kwok', 'Andre Gastelum', 'Marline Murdock', 'Janet Alcala', 'Suzanna Schrum', 'Gwen Rickett', 'Marquitta Mesa', 'Juliann Herrin', 'Marvella Houchins', 'Josef Dragon', 'Lyn Ammon', 'Angelique Kish', 'Jinny Fils', 'Clelia Walder', 'Tandra Sanks', 'Easter Depaul', 'Jann Custard', 'Mariel Partain', 'Noelia Sypher', 'Araceli Burrell', 'Tristan Siller', 'Kathi Guillotte', 'Milan Sadowski', 'Nancey Patnaude', 'Tameka Castille', 'Raleigh Seel', 'Marcy Chico', 'Jovita Johansson', 'Alissa Oathout']
+        self.dlg.cboStreet.addItems(randomList)
+        
