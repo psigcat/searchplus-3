@@ -87,6 +87,9 @@ class SearchPlus(QObject):
         self.settings = QSettings(settingFile, QSettings.IniFormat)
         self.settings.setIniCodec("UTF-8")
         
+        # load plugin settings
+        self.loadPluginSettings()
+        
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&searchplus')
@@ -101,6 +104,34 @@ class SearchPlus(QObject):
         
         # when connection is established, then set all GUI values
         self.connectionEstablished.connect(self.populateGui)
+    
+    def loadPluginSettings(self):
+        ''' Load plugin settings
+        '''
+        # get all db configuration table/columns to load to populate the GUI
+        self.STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
+        self.STREET_LAYER= self.settings.value('db/STREET_LAYER', '')
+        self.STREET_FIELD_CODE= self.settings.value('db/STREET_FIELD_CODE', '')
+        self.STREET_FIELD_NAME= self.settings.value('db/STREET_FIELD_NAME', '')
+        
+        self.PORTAL_SCHEMA= self.settings.value('db/PORTAL_SCHEMA', '')
+        self.PORTAL_LAYER= self.settings.value('db/PORTAL_LAYER', '')
+        self.PORTAL_FIELD_CODE= self.settings.value('db/PORTAL_FIELD_CODE', '')
+        self.PORTAL_FIELD_NUMBER= self.settings.value('db/PORTAL_FIELD_NUMBER', '')
+        
+        self.PLACENAME_SCHEMA= self.settings.value('db/PLACENAME_SCHEMA', '')
+        self.PLACENAME_LAYER= self.settings.value('db/PLACENAME_LAYER', '')
+        self.PLACENAME_FIELD= self.settings.value('db/PLACENAME_FIELD', '')
+        
+        self.EQUIPMENT_SCHEMA= self.settings.value('db/EQUIPMENT_SCHEMA', '')
+        self.EQUIPMENT_LAYER= self.settings.value('db/EQUIPMENT_LAYER', '')
+        self.EQUIPMENT_FIELD_TYPE= self.settings.value('db/EQUIPMENT_FIELD_TYPE', '')
+        self.EQUIPMENT_FIELD_NAME= self.settings.value('db/EQUIPMENT_FIELD_NAME', '')
+        
+        self.CADASTRE_SCHEMA= self.settings.value('db/CADASTRE_SCHEMA', '')
+        self.CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '')
+        self.CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '')
+        
     
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -205,6 +236,10 @@ class SearchPlus(QObject):
         self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
         self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
         self.dlg.setVisible(False)
+        
+        # add dlg event managenment
+        self.dlg.cboStreet.currentIndexChanged.connect(self.resetNumbers)
+        self.dlg.cboType.currentIndexChanged.connect(self.resetEquipments)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -272,63 +307,104 @@ class SearchPlus(QObject):
         if not self.connection:
             return
         
-        # get all db configuration table/columns to load to populate the GUI
-        STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
-        STREET_LAYER= self.settings.value('db/STREET_LAYER', '')
-        STREET_FIELD_CODE= self.settings.value('db/STREET_FIELD_CODE', '')
-        STREET_FIELD_NAME= self.settings.value('db/STREET_FIELD_NAME', '')
-        
-        PORTAL_SCHEMA= self.settings.value('db/PORTAL_SCHEMA', '')
-        PORTAL_LAYER= self.settings.value('db/PORTAL_LAYER', '')
-        PORTAL_FIELD_CODE= self.settings.value('db/PORTAL_FIELD_CODE', '')
-        PORTAL_FIELD_NUMBER= self.settings.value('db/PORTAL_FIELD_NUMBER', '')
-        
-        PLACENAME_SCHEMA= self.settings.value('db/PLACENAME_SCHEMA', '')
-        PLACENAME_LAYER= self.settings.value('db/PLACENAME_LAYER', '')
-        PLACENAME_FIELD= self.settings.value('db/PLACENAME_FIELD', '')
-        
-        EQUIPMENT_SCHEMA= self.settings.value('db/EQUIPMENT_SCHEMA', '')
-        EQUIPMENT_LAYER= self.settings.value('db/EQUIPMENT_LAYER', '')
-        EQUIPMENT_FIELD_TYPE= self.settings.value('db/EQUIPMENT_FIELD_TYPE', '')
-        EQUIPMENT_FIELD_NAME= self.settings.value('db/EQUIPMENT_FIELD_NAME', '')
-        
-        CADASTRE_SCHEMA= self.settings.value('db/CADASTRE_SCHEMA', '')
-        CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '')
-        CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '')
-        
         # get cursor on wich execute query
         cursor = self.connection.cursor()
         
         # tab Carrerer
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(STREET_FIELD_NAME, STREET_SCHEMA, STREET_LAYER, STREET_FIELD_NAME)
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
         cursor.execute(sqlquery)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        print(sqlquery, records)
+        records = ['']
+        records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
         self.dlg.cboStreet.blockSignals(True)
         self.dlg.cboStreet.clear()
         self.dlg.cboStreet.addItems(records)
         self.dlg.cboStreet.blockSignals(False)
         
         # tab Toponyms
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(PLACENAME_FIELD, PLACENAME_SCHEMA, PLACENAME_LAYER, PLACENAME_FIELD)
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.PLACENAME_FIELD, self.PLACENAME_SCHEMA, self.PLACENAME_LAYER, self.PLACENAME_FIELD)
         cursor.execute(sqlquery)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        print(sqlquery, records)
+        records = ['']
+        records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
         self.dlg.cboTopo.blockSignals(True)
         self.dlg.cboTopo.clear()
         self.dlg.cboTopo.addItems(records)
         self.dlg.cboTopo.blockSignals(False)
         
         # tab equipments
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" GROUP BY "{}" ORDER BY "{}"'.format(EQUIPMENT_FIELD_TYPE, EQUIPMENT_SCHEMA, EQUIPMENT_LAYER, EQUIPMENT_FIELD_TYPE, EQUIPMENT_FIELD_TYPE)
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" GROUP BY "{}" ORDER BY "{}"'.format(self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_TYPE)
         cursor.execute(sqlquery)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        print(sqlquery, records)
+        records = ['']
+        records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
         self.dlg.cboType.blockSignals(True)
         self.dlg.cboType.clear()
         self.dlg.cboType.addItems(records)
         self.dlg.cboType.blockSignals(False)
+    
+    def resetNumbers(self):
+        ''' Populate civic numbers depending on selected street. 
+        Available civic numbers are linked with self.STREET_FIELD_CODE column code in self.PORTAL_LAYER
+        and self.STREET_LAYER
+        '''
+        if not self.connection:
+            return
+        
+        # get selected street
+        selected = self.dlg.cboStreet.currentText()
+        if selected == '':
+            return
+        
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
 
+        # get self.STREET_FIELD_CODE related to the current selected street
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s; '.format(self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
+        params = [selected]
+        cursor.execute(sqlquery, params)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        if len(records) != 1:
+            message = self.tr('There are {} streets with name "{}"'.format(len(records), selected))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        code = records[0]
+        
+        # now get the list of indexes belonging to the current code
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.PORTAL_FIELD_NUMBER, self.STREET_SCHEMA, self.PORTAL_LAYER, self.PORTAL_FIELD_CODE, self.PORTAL_FIELD_NUMBER)
+        params = [code]
+        cursor.execute(sqlquery, params)
+        records = ['']
+        records.extend( [x[0] for x in cursor.fetchall() if x[0]] ) # remove None values
+        self.dlg.cboNumber.blockSignals(True)
+        self.dlg.cboNumber.clear()
+        self.dlg.cboNumber.addItems(records)
+        self.dlg.cboNumber.blockSignals(False)        
+    
+    def resetEquipments(self):
+        ''' Populate equipments combo depending on selected type. 
+        Available equipments EQUIPMENT_FIELD_NAME belonging to the same EQUIPMENT_FIELD_TYPE of 
+        the same layer EQUIPMENT_LAYER
+        '''
+        if not self.connection:
+            return
+        
+        # get selected street
+        selectedCode = self.dlg.cboType.currentText()
+        if selectedCode == '':
+            return
+        
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
+
+        # now get the list of names belonging to the current type
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.EQUIPMENT_FIELD_NAME, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_NAME)
+        params = [selectedCode]
+        cursor.execute(sqlquery, params)
+        records = ['']
+        records.extend( [x[0] for x in cursor.fetchall() if x[0]] ) # remove None values
+        self.dlg.cboEquipment.blockSignals(True)
+        self.dlg.cboEquipment.clear()
+        self.dlg.cboEquipment.addItems(records)
+        self.dlg.cboEquipment.blockSignals(False) 
+    
     def run(self):
         """Run method activated byt the toolbar action button"""
         if self.dlg and not self.dlg.isVisible():
