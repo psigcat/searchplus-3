@@ -23,9 +23,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from qgis.utils import active_plugins
-from qgis.gui import (QgsMessageBar)
+from qgis.gui import (QgsMessageBar,
+                      QgsTextAnnotationItem)
 from qgis.core import (QgsCredentials,
-                       QgsDataSourceURI)
+                       QgsDataSourceURI,
+                       QgsGeometry)
 from PyQt4.QtCore import (QObject,
                           QSettings, 
                           QTranslator, 
@@ -35,7 +37,8 @@ from PyQt4.QtCore import (QObject,
                           pyqtSignal)
 from PyQt4.QtGui import (QAction, 
                          QIcon,
-                         QDockWidget)
+                         QDockWidget,
+                         QTextDocument)
 
 # PostGIS import
 import psycopg2
@@ -237,9 +240,12 @@ class SearchPlus(QObject):
         self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
         self.dlg.setVisible(False)
         
-        # add dlg event managenment
+        # add first level combo box events
         self.dlg.cboStreet.currentIndexChanged.connect(self.resetNumbers)
         self.dlg.cboType.currentIndexChanged.connect(self.resetEquipments)
+        
+        # add events to show information o the canvas
+        self.dlg.cboNumber.currentIndexChanged.connect(self.displayStreetData)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -405,6 +411,77 @@ class SearchPlus(QObject):
         self.dlg.cboEquipment.addItems(records)
         self.dlg.cboEquipment.blockSignals(False) 
     
+    def displayStreetData(self):
+        ''' Show street data on the canvas when selected street and number in street tab
+        '''
+        # preconditions
+        if not self.connection:
+            return
+
+        street = self.dlg.cboStreet.currentText()
+        if street == '':
+            return
+        
+        civic = self.dlg.cboNumber.currentText()
+        if civic == '':
+            return
+
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
+
+        # get self.STREET_FIELD_CODE related to the current selected street
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s; '.format(self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
+        params = [street]
+        cursor.execute(sqlquery, params)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        if len(records) != 1:
+            message = self.tr('There are {} streets with name "{}"'.format(len(records), selected))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        code = records[0]
+        
+        # now get the list of indexes belonging to the current code
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE "{}" = %s AND "{}" = %s; '.format(self.STREET_SCHEMA, self.PORTAL_LAYER, self.PORTAL_FIELD_CODE, self.PORTAL_FIELD_NUMBER)
+        params = [code, civic]
+        cursor.execute(sqlquery, params)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        if len(records) != 1:
+            message = self.tr('There are {} civic numbers in street "{}" and civic "{}"'.format(len(records), street, civic))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        wkt = records[0]
+        
+        # create geometry for returned WKT
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom:
+            message = self.tr('Can not correctly get geometry')
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # create message to show
+        message = street + ', '+civic
+        
+        # display annotation with message at a specified position
+        self.displayAnnotation(geom, message)
+        
+    def displayAnnotation(self, geom, message):
+        ''' Display a specific message in the centroid of a specific geometry
+        '''
+        centroid = geom.centroid()
+        
+        # build annotation
+        textDoc =QTextDocument(message)
+        item = QgsTextAnnotationItem( self.iface.mapCanvas() )
+        item.setMapPosition(centroid.asPoint())
+        item.setFrameSize(textDoc.size())
+        item.setDocument(textDoc)
+        item.update()
+        
+        # center in the centroid
+        self.iface.mapCanvas().setCenter(centroid.asPoint())
+        self.iface.mapCanvas().refresh()
+    
     def run(self):
         """Run method activated byt the toolbar action button"""
         if self.dlg and not self.dlg.isVisible():
@@ -417,7 +494,3 @@ class SearchPlus(QObject):
         # if not, setup connection
         if not self.connection:
             self.initConnection()
-        
-        #randomList = ['Merilyn Mcdonald', 'Angeline Langston', 'Rogelio Locust', 'Laura Henshaw', 'Tawanna Criado', 'Tamiko Hysmith', 'Chrissy Mazer', 'Maryland Blassingame', 'Johnette Mera', 'Vasiliki Launer', 'Trevor Cottle', 'Vicenta Gaut', 'Lavona Uhrig', 'Colton Lyke', 'Russel Hoye', 'Mayola Fullilove', 'Caterina Gabriele', 'Sanford Delisa', 'Coy Kinsley', 'Diedre Luciano', 'Gaynelle Debusk', 'Sonja Kwok', 'Andre Gastelum', 'Marline Murdock', 'Janet Alcala', 'Suzanna Schrum', 'Gwen Rickett', 'Marquitta Mesa', 'Juliann Herrin', 'Marvella Houchins', 'Josef Dragon', 'Lyn Ammon', 'Angelique Kish', 'Jinny Fils', 'Clelia Walder', 'Tandra Sanks', 'Easter Depaul', 'Jann Custard', 'Mariel Partain', 'Noelia Sypher', 'Araceli Burrell', 'Tristan Siller', 'Kathi Guillotte', 'Milan Sadowski', 'Nancey Patnaude', 'Tameka Castille', 'Raleigh Seel', 'Marcy Chico', 'Jovita Johansson', 'Alissa Oathout']
-        #self.dlg.cboStreet.addItems(randomList)
-        
