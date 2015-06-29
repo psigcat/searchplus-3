@@ -22,23 +22,36 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import qgis
-from PyQt4.QtCore import (QSettings, 
+from qgis.utils import active_plugins
+from qgis.gui import (QgsMessageBar)
+from qgis.core import (QgsCredentials,
+                       QgsDataSourceURI)
+from PyQt4.QtCore import (QObject,
+                          QSettings, 
                           QTranslator, 
                           qVersion, 
                           QCoreApplication,
-                          Qt)
+                          Qt,
+                          pyqtSignal)
 from PyQt4.QtGui import (QAction, 
                          QIcon,
                          QDockWidget)
-# Initialize Qt resources from file resources.py
+
+# PostGIS import
+import psycopg2
+import psycopg2.extensions
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)# Initialize Qt resources from file resources.py
 import resources_rc
+
 # Import the code for the dialog
 from search_plus_dockwidget import SearchPlusDockWidget
 import os.path
 
-class SearchPlus:
+class SearchPlus(QObject):
     """QGIS Plugin Implementation."""
+
+    connectionEstablished = pyqtSignal()
 
     def __init__(self, iface):
         """Constructor.
@@ -48,6 +61,8 @@ class SearchPlus:
             application at run time.
         :type iface: QgsInterface
         """
+        super(SearchPlus, self).__init__()
+        
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -75,12 +90,17 @@ class SearchPlus:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&searchplus')
+        self.connection = None
+        
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'SearchPlus')
         self.toolbar.setObjectName(u'SearchPlus')
         
-        # create dockwidget when initialization is completed
-        #self.iface.initializationCompleted.connect(self.run)
+        # establish connection when all is completly running 
+        self.iface.initializationCompleted.connect(self.initConnection)
+        
+        # when connection is established, then set all GUI values
+        self.connectionEstablished.connect(self.populateGui)
     
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -200,16 +220,128 @@ class SearchPlus:
             self.dlg.deleteLater()
             del self.dlg
 
+    
+    def initConnection(self):
+        ''' Establish connection with the default credentials
+        Connection name is get from QGIS connection. Will be used the connection
+        configured int he plugin settings
+        '''
+        # eventually close opened connections
+        try:
+            self.connection.close()
+        except:
+            pass
+        
+        # get default configured connection name
+        connName = self.settings.value('db/CONNECTION_NAME', '')
+        if not connName:
+            confFileName = self.setting.fileName()
+            message = self.tr('No default connection is configured in {}'.format(confFileName))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # look for connection data in QGIS configration
+        # get connection data
+        qgisSettings = QSettings()
+        
+        root = "/PostgreSQL/connections/"+connName+"/"
+        DATABASE_HOST = qgisSettings.value(root+"host", '')
+        DATABASE_NAME = qgisSettings.value(root+"database", '')
+        DATABASE_PORT = qgisSettings.value(root+"port", '')
+        DATABASE_USER = qgisSettings.value(root+"username", '')
+        DATABASE_PWD = qgisSettings.value(root+"password", '')
+        
+        (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get( "", DATABASE_USER, DATABASE_PWD );
+        self.uri = QgsDataSourceURI()
+        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD)
+        
+        # connect
+        try:
+            self.connection = psycopg2.connect( self.uri.connectionInfo().encode('utf-8') )
+        except Exception as ex:
+            message = self.tr('Can not connect to connection named: {} for reason: {} '.format(connName, str(ex)))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # emit signal that connection is established
+        self.connectionEstablished.emit()
+    
+    def populateGui(self):
+        ''' Populate the interface with values get from DB
+        '''
+        if not self.connection:
+            return
+        
+        # get all db configuration table/columns to load to populate the GUI
+        STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
+        STREET_LAYER= self.settings.value('db/STREET_LAYER', '')
+        STREET_FIELD_CODE= self.settings.value('db/STREET_FIELD_CODE', '')
+        STREET_FIELD_NAME= self.settings.value('db/STREET_FIELD_NAME', '')
+        
+        PORTAL_SCHEMA= self.settings.value('db/PORTAL_SCHEMA', '')
+        PORTAL_LAYER= self.settings.value('db/PORTAL_LAYER', '')
+        PORTAL_FIELD_CODE= self.settings.value('db/PORTAL_FIELD_CODE', '')
+        PORTAL_FIELD_NUMBER= self.settings.value('db/PORTAL_FIELD_NUMBER', '')
+        
+        PLACENAME_SCHEMA= self.settings.value('db/PLACENAME_SCHEMA', '')
+        PLACENAME_LAYER= self.settings.value('db/PLACENAME_LAYER', '')
+        PLACENAME_FIELD= self.settings.value('db/PLACENAME_FIELD', '')
+        
+        EQUIPMENT_SCHEMA= self.settings.value('db/EQUIPMENT_SCHEMA', '')
+        EQUIPMENT_LAYER= self.settings.value('db/EQUIPMENT_LAYER', '')
+        EQUIPMENT_FIELD_TYPE= self.settings.value('db/EQUIPMENT_FIELD_TYPE', '')
+        EQUIPMENT_FIELD_NAME= self.settings.value('db/EQUIPMENT_FIELD_NAME', '')
+        
+        CADASTRE_SCHEMA= self.settings.value('db/CADASTRE_SCHEMA', '')
+        CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '')
+        CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '')
+        
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
+        
+        # tab Carrerer
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(STREET_FIELD_NAME, STREET_SCHEMA, STREET_LAYER, STREET_FIELD_NAME)
+        cursor.execute(sqlquery)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        print(sqlquery, records)
+        self.dlg.cboStreet.blockSignals(True)
+        self.dlg.cboStreet.clear()
+        self.dlg.cboStreet.addItems(records)
+        self.dlg.cboStreet.blockSignals(False)
+        
+        # tab Toponyms
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(PLACENAME_FIELD, PLACENAME_SCHEMA, PLACENAME_LAYER, PLACENAME_FIELD)
+        cursor.execute(sqlquery)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        print(sqlquery, records)
+        self.dlg.cboTopo.blockSignals(True)
+        self.dlg.cboTopo.clear()
+        self.dlg.cboTopo.addItems(records)
+        self.dlg.cboTopo.blockSignals(False)
+        
+        # tab equipments
+        sqlquery = 'SELECT "{}" FROM "{}"."{}" GROUP BY "{}" ORDER BY "{}"'.format(EQUIPMENT_FIELD_TYPE, EQUIPMENT_SCHEMA, EQUIPMENT_LAYER, EQUIPMENT_FIELD_TYPE, EQUIPMENT_FIELD_TYPE)
+        cursor.execute(sqlquery)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        print(sqlquery, records)
+        self.dlg.cboType.blockSignals(True)
+        self.dlg.cboType.clear()
+        self.dlg.cboType.addItems(records)
+        self.dlg.cboType.blockSignals(False)
 
     def run(self):
         """Run method activated byt the toolbar action button"""
         if self.dlg and not self.dlg.isVisible():
             # check if the plugin is active
-            if not self.pluginName in qgis.utils.active_plugins:
+            if not self.pluginName in active_plugins:
                 return
             
             self.dlg.show()
         
-        randomList = ['Merilyn Mcdonald', 'Angeline Langston', 'Rogelio Locust', 'Laura Henshaw', 'Tawanna Criado', 'Tamiko Hysmith', 'Chrissy Mazer', 'Maryland Blassingame', 'Johnette Mera', 'Vasiliki Launer', 'Trevor Cottle', 'Vicenta Gaut', 'Lavona Uhrig', 'Colton Lyke', 'Russel Hoye', 'Mayola Fullilove', 'Caterina Gabriele', 'Sanford Delisa', 'Coy Kinsley', 'Diedre Luciano', 'Gaynelle Debusk', 'Sonja Kwok', 'Andre Gastelum', 'Marline Murdock', 'Janet Alcala', 'Suzanna Schrum', 'Gwen Rickett', 'Marquitta Mesa', 'Juliann Herrin', 'Marvella Houchins', 'Josef Dragon', 'Lyn Ammon', 'Angelique Kish', 'Jinny Fils', 'Clelia Walder', 'Tandra Sanks', 'Easter Depaul', 'Jann Custard', 'Mariel Partain', 'Noelia Sypher', 'Araceli Burrell', 'Tristan Siller', 'Kathi Guillotte', 'Milan Sadowski', 'Nancey Patnaude', 'Tameka Castille', 'Raleigh Seel', 'Marcy Chico', 'Jovita Johansson', 'Alissa Oathout']
-        self.dlg.cboStreet.addItems(randomList)
+        # if not, setup connection
+        if not self.connection:
+            self.initConnection()
+        
+        #randomList = ['Merilyn Mcdonald', 'Angeline Langston', 'Rogelio Locust', 'Laura Henshaw', 'Tawanna Criado', 'Tamiko Hysmith', 'Chrissy Mazer', 'Maryland Blassingame', 'Johnette Mera', 'Vasiliki Launer', 'Trevor Cottle', 'Vicenta Gaut', 'Lavona Uhrig', 'Colton Lyke', 'Russel Hoye', 'Mayola Fullilove', 'Caterina Gabriele', 'Sanford Delisa', 'Coy Kinsley', 'Diedre Luciano', 'Gaynelle Debusk', 'Sonja Kwok', 'Andre Gastelum', 'Marline Murdock', 'Janet Alcala', 'Suzanna Schrum', 'Gwen Rickett', 'Marquitta Mesa', 'Juliann Herrin', 'Marvella Houchins', 'Josef Dragon', 'Lyn Ammon', 'Angelique Kish', 'Jinny Fils', 'Clelia Walder', 'Tandra Sanks', 'Easter Depaul', 'Jann Custard', 'Mariel Partain', 'Noelia Sypher', 'Araceli Burrell', 'Tristan Siller', 'Kathi Guillotte', 'Milan Sadowski', 'Nancey Patnaude', 'Tameka Castille', 'Raleigh Seel', 'Marcy Chico', 'Jovita Johansson', 'Alissa Oathout']
+        #self.dlg.cboStreet.addItems(randomList)
         
