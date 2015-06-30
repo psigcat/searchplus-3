@@ -38,7 +38,7 @@
        <locale language="Catalan" country="Spain"/>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="searchPlusStreetsTab">
        <attribute name="title">

@@ -171,7 +171,7 @@ class Ui_searchPlusDockWidget(object):
         searchPlusDockWidget.setWidget(self.contents)
 
         self.retranslateUi(searchPlusDockWidget)
-        self.searchPlusTabMain.setCurrentIndex(3)
+        self.searchPlusTabMain.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(searchPlusDockWidget)
 
     def retranslateUi(self, searchPlusDockWidget):
