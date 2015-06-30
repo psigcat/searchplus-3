@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/search_plus_dialog_base.ui'
 #
-# Created: Wed Jun 24 13:22:13 2015
+# Created: Tue Jun 30 20:00:45 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -121,9 +121,10 @@ class Ui_searchPlusDockWidget(object):
         self.lblCadastre.setWordWrap(True)
         self.lblCadastre.setObjectName(_fromUtf8("lblCadastre"))
         self.verticalLayout_5.addWidget(self.lblCadastre)
-        self.txtCadastre = QtGui.QLineEdit(self.searchPlusCadastreTab)
-        self.txtCadastre.setObjectName(_fromUtf8("txtCadastre"))
-        self.verticalLayout_5.addWidget(self.txtCadastre)
+        self.cboCadastre = SearchableComboBox(self.searchPlusCadastreTab)
+        self.cboCadastre.setEditable(True)
+        self.cboCadastre.setObjectName(_fromUtf8("cboCadastre"))
+        self.verticalLayout_5.addWidget(self.cboCadastre)
         self.searchPlusTabMain.addTab(self.searchPlusCadastreTab, _fromUtf8(""))
         self.searchPlusUTMTab = QtGui.QWidget()
         self.searchPlusUTMTab.setObjectName(_fromUtf8("searchPlusUTMTab"))
@@ -170,7 +171,7 @@ class Ui_searchPlusDockWidget(object):
         searchPlusDockWidget.setWidget(self.contents)
 
         self.retranslateUi(searchPlusDockWidget)
-        self.searchPlusTabMain.setCurrentIndex(0)
+        self.searchPlusTabMain.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(searchPlusDockWidget)
 
     def retranslateUi(self, searchPlusDockWidget):
