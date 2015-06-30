@@ -247,6 +247,7 @@ class SearchPlus(QObject):
         # add events to show information o the canvas
         self.dlg.cboNumber.currentIndexChanged.connect(self.displayStreetData)
         self.dlg.cboTopo.currentIndexChanged.connect(self.displayToponym)
+        self.dlg.cboEquipment.currentIndexChanged.connect(self.displayEquipment)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -262,7 +263,6 @@ class SearchPlus(QObject):
             self.dlg.deleteLater()
             del self.dlg
 
-    
     def initConnection(self):
         ''' Establish connection with the default credentials
         Connection name is get from QGIS connection. Will be used the connection
@@ -404,16 +404,55 @@ class SearchPlus(QObject):
         cursor = self.connection.cursor()
 
         # now get the list of names belonging to the current type
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.EQUIPMENT_FIELD_NAME, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_NAME)
+        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.EQUIPMENT_FIELD_NAME, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_NAME)
         params = [selectedCode]
         cursor.execute(sqlquery, params)
-        records = ['']
-        records.extend( [x[0] for x in cursor.fetchall() if x[0]] ) # remove None values
+        records = [(-1, '')]
+        records.extend( [x for x in cursor.fetchall() if x[1]] ) # remove None values
         self.dlg.cboEquipment.blockSignals(True)
         self.dlg.cboEquipment.clear()
-        self.dlg.cboEquipment.addItems(records)
+        for record in records:
+            self.dlg.cboEquipment.addItem(record[1], record[0])
         self.dlg.cboEquipment.blockSignals(False) 
     
+    def displayEquipment(self):
+        ''' Show equipment data on the canvas when selected it in the relative tab
+        '''
+        # preconditions
+        if not self.connection:
+            return
+
+        typ = self.dlg.cboType.currentText()
+        if typ == '':
+            return
+        
+        equipment = self.dlg.cboEquipment.currentText()
+        if equipment == '':
+            return
+        
+        # get the id of the selected portal
+        id = self.dlg.cboEquipment.itemData( self.dlg.cboEquipment.currentIndex() )
+
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
+
+        # tab Toponyms
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)
+        params = [id]
+        cursor.execute(sqlquery, params)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        wkt = records[0]
+        
+        # create geometry for returned WKT
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom:
+            message = self.tr('Can not correctly get geometry')
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # display annotation with message at a specified position
+        self.displayAnnotation(geom, equipment)
+         
     def displayToponym(self):
         ''' Show toponym data on the canvas when selected it in the relative tab
         '''
@@ -448,7 +487,6 @@ class SearchPlus(QObject):
         # display annotation with message at a specified position
         self.displayAnnotation(geom, toponym)
          
-    
     def displayStreetData(self):
         ''' Show street data on the canvas when selected street and number in street tab
         '''
