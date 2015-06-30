@@ -246,6 +246,7 @@ class SearchPlus(QObject):
         
         # add events to show information o the canvas
         self.dlg.cboNumber.currentIndexChanged.connect(self.displayStreetData)
+        self.dlg.cboTopo.currentIndexChanged.connect(self.displayToponym)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -267,6 +268,9 @@ class SearchPlus(QObject):
         Connection name is get from QGIS connection. Will be used the connection
         configured int he plugin settings
         '''
+        if self.dlg and not self.dlg.isVisible():
+            return
+        
         # eventually close opened connections
         try:
             self.connection.close()
@@ -317,23 +321,28 @@ class SearchPlus(QObject):
         cursor = self.connection.cursor()
         
         # tab Carrerer
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
+        sqlquery = 'SELECT id, "{}", "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
         cursor.execute(sqlquery)
-        records = ['']
-        records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
+        records = [(-1, '', '')]
+        recs = cursor.fetchall()
+        records.extend(recs)
+            
+        #records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
         self.dlg.cboStreet.blockSignals(True)
         self.dlg.cboStreet.clear()
-        self.dlg.cboStreet.addItems(records)
+        for record in records:
+            self.dlg.cboStreet.addItem(record[1], record)
         self.dlg.cboStreet.blockSignals(False)
         
         # tab Toponyms
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.PLACENAME_FIELD, self.PLACENAME_SCHEMA, self.PLACENAME_LAYER, self.PLACENAME_FIELD)
+        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.PLACENAME_FIELD, self.PLACENAME_SCHEMA, self.PLACENAME_LAYER, self.PLACENAME_FIELD)
         cursor.execute(sqlquery)
-        records = ['']
-        records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
+        records = [(-1, '')]
+        records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
         self.dlg.cboTopo.blockSignals(True)
         self.dlg.cboTopo.clear()
-        self.dlg.cboTopo.addItems(records)
+        for record in records:
+            self.dlg.cboTopo.addItem(record[1], record[0])
         self.dlg.cboTopo.blockSignals(False)
         
         # tab equipments
@@ -359,29 +368,23 @@ class SearchPlus(QObject):
         if selected == '':
             return
         
+        # get code
+        data = self.dlg.cboStreet.itemData( self.dlg.cboStreet.currentIndex() )
+        code = data[2] # to know the index see the query that populate the combo
+        
         # get cursor on wich execute query
         cursor = self.connection.cursor()
 
-        # get self.STREET_FIELD_CODE related to the current selected street
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s; '.format(self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
-        params = [selected]
-        cursor.execute(sqlquery, params)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        if len(records) != 1:
-            message = self.tr('There are {} streets with name "{}"'.format(len(records), selected))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
-            return
-        code = records[0]
-        
         # now get the list of indexes belonging to the current code
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.PORTAL_FIELD_NUMBER, self.STREET_SCHEMA, self.PORTAL_LAYER, self.PORTAL_FIELD_CODE, self.PORTAL_FIELD_NUMBER)
+        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.PORTAL_FIELD_NUMBER, self.STREET_SCHEMA, self.PORTAL_LAYER, self.PORTAL_FIELD_CODE, self.PORTAL_FIELD_NUMBER)
         params = [code]
         cursor.execute(sqlquery, params)
-        records = ['']
-        records.extend( [x[0] for x in cursor.fetchall() if x[0]] ) # remove None values
+        records = [(-1, '')]
+        records.extend( [x for x in cursor.fetchall() if x[1]] ) # remove None values
         self.dlg.cboNumber.blockSignals(True)
         self.dlg.cboNumber.clear()
-        self.dlg.cboNumber.addItems(records)
+        for record in records:
+            self.dlg.cboNumber.addItem(record[1], record[0])
         self.dlg.cboNumber.blockSignals(False)        
     
     def resetEquipments(self):
@@ -411,6 +414,41 @@ class SearchPlus(QObject):
         self.dlg.cboEquipment.addItems(records)
         self.dlg.cboEquipment.blockSignals(False) 
     
+    def displayToponym(self):
+        ''' Show toponym data on the canvas when selected it in the relative tab
+        '''
+        # preconditions
+        if not self.connection:
+            return
+
+        toponym = self.dlg.cboTopo.currentText()
+        if toponym == '':
+            return
+        
+        # get the id of the selected portal
+        id = self.dlg.cboTopo.itemData( self.dlg.cboTopo.currentIndex() )
+
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
+
+        # tab Toponyms
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)
+        params = [id]
+        cursor.execute(sqlquery, params)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        wkt = records[0]
+        
+        # create geometry for returned WKT
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom:
+            message = self.tr('Can not correctly get geometry')
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # display annotation with message at a specified position
+        self.displayAnnotation(geom, toponym)
+         
+    
     def displayStreetData(self):
         ''' Show street data on the canvas when selected street and number in street tab
         '''
@@ -425,31 +463,18 @@ class SearchPlus(QObject):
         civic = self.dlg.cboNumber.currentText()
         if civic == '':
             return
+        
+        # get the id of the selected portal
+        id = self.dlg.cboNumber.itemData( self.dlg.cboNumber.currentIndex() )
 
         # get cursor on wich execute query
         cursor = self.connection.cursor()
 
-        # get self.STREET_FIELD_CODE related to the current selected street
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" WHERE "{}" = %s; '.format(self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
-        params = [street]
-        cursor.execute(sqlquery, params)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        if len(records) != 1:
-            message = self.tr('There are {} streets with name "{}"'.format(len(records), selected))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
-            return
-        code = records[0]
-        
         # now get the list of indexes belonging to the current code
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE "{}" = %s AND "{}" = %s; '.format(self.STREET_SCHEMA, self.PORTAL_LAYER, self.PORTAL_FIELD_CODE, self.PORTAL_FIELD_NUMBER)
-        params = [code, civic]
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s; '.format(self.STREET_SCHEMA, self.PORTAL_LAYER)
+        params = [id]
         cursor.execute(sqlquery, params)
         records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        if len(records) != 1:
-            message = self.tr('There are {} civic numbers in street "{}" and civic "{}"'.format(len(records), street, civic))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
-            return
-        
         wkt = records[0]
         
         # create geometry for returned WKT
