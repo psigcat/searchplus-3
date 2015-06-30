@@ -248,6 +248,7 @@ class SearchPlus(QObject):
         self.dlg.cboNumber.currentIndexChanged.connect(self.displayStreetData)
         self.dlg.cboTopo.currentIndexChanged.connect(self.displayToponym)
         self.dlg.cboEquipment.currentIndexChanged.connect(self.displayEquipment)
+        self.dlg.cboCadastre.currentIndexChanged.connect(self.displayCadastre)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -354,6 +355,17 @@ class SearchPlus(QObject):
         self.dlg.cboType.clear()
         self.dlg.cboType.addItems(records)
         self.dlg.cboType.blockSignals(False)
+        
+        # tab cadastre
+        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.CADASTRE_FIELD_CODE, self.CADASTRE_SCHEMA, self.CADASTRE_LAYER, self.CADASTRE_FIELD_CODE)
+        cursor.execute(sqlquery)
+        records = [(-1, '')]
+        records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
+        self.dlg.cboCadastre.blockSignals(True)
+        self.dlg.cboCadastre.clear()
+        for record in records:
+            self.dlg.cboCadastre.addItem(record[1], record[0])
+        self.dlg.cboCadastre.blockSignals(False)
     
     def resetNumbers(self):
         ''' Populate civic numbers depending on selected street. 
@@ -415,6 +427,46 @@ class SearchPlus(QObject):
             self.dlg.cboEquipment.addItem(record[1], record[0])
         self.dlg.cboEquipment.blockSignals(False) 
     
+    def displayCadastre(self):
+        ''' Show cadastre data on the canvas when selected it in the relative tab
+        '''
+        # preconditions
+        if not self.connection:
+            return
+
+        cadastre = self.dlg.cboCadastre.currentText()
+        if cadastre == '':
+            return
+        
+        # get the id of the selected portal
+        id = self.dlg.cboCadastre.itemData( self.dlg.cboCadastre.currentIndex() )
+        if not id:
+            # that means that user has edited manually the combo but the element
+            # does not correspond to any combo element
+            message = self.tr('Element {} does not exist'.format(cadastre))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            return
+
+        # get cursor on wich execute query
+        cursor = self.connection.cursor()
+
+        # tab Toponyms
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.CADASTRE_SCHEMA, self.CADASTRE_LAYER)
+        params = [id]
+        cursor.execute(sqlquery, params)
+        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
+        wkt = records[0]
+        
+        # create geometry for returned WKT
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom:
+            message = self.tr('Can not correctly get geometry')
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # display annotation with message at a specified position
+        self.displayAnnotation(geom, cadastre)
+         
     def displayEquipment(self):
         ''' Show equipment data on the canvas when selected it in the relative tab
         '''
@@ -432,6 +484,12 @@ class SearchPlus(QObject):
         
         # get the id of the selected portal
         id = self.dlg.cboEquipment.itemData( self.dlg.cboEquipment.currentIndex() )
+        if not id:
+            # that means that user has edited manually the combo but the element
+            # does not correspond to any combo element
+            message = self.tr('Element {} does not exist'.format(equipment))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            return
 
         # get cursor on wich execute query
         cursor = self.connection.cursor()
@@ -466,6 +524,12 @@ class SearchPlus(QObject):
         
         # get the id of the selected portal
         id = self.dlg.cboTopo.itemData( self.dlg.cboTopo.currentIndex() )
+        if not id:
+            # that means that user has edited manually the combo but the element
+            # does not correspond to any combo element
+            message = self.tr('Element {} does not exist'.format(toponym))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            return
 
         # get cursor on wich execute query
         cursor = self.connection.cursor()
@@ -504,6 +568,12 @@ class SearchPlus(QObject):
         
         # get the id of the selected portal
         id = self.dlg.cboNumber.itemData( self.dlg.cboNumber.currentIndex() )
+        if not id:
+            # that means that user has edited manually the combo but the element
+            # does not correspond to any combo element
+            message = self.tr('Element {} does not exist'.format(civic))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            return
 
         # get cursor on wich execute query
         cursor = self.connection.cursor()
