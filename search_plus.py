@@ -93,7 +93,7 @@ class SearchPlus(QObject):
         # load local settings of the plugin
         settingFile = os.path.join(self.plugin_dir, 'config', 'config.properties')
         self.settings = QSettings(settingFile, QSettings.IniFormat)
-        self.settings.setIniCodec("UTF-8")
+        self.settings.setIniCodec( sys.stdout.encoding )
         
         # load plugin settings
         self.loadPluginSettings()
