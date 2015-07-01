@@ -27,7 +27,8 @@ from qgis.gui import (QgsMessageBar,
                       QgsTextAnnotationItem)
 from qgis.core import (QgsCredentials,
                        QgsDataSourceURI,
-                       QgsGeometry)
+                       QgsGeometry,
+                       QgsPoint)
 from PyQt4.QtCore import (QObject,
                           QSettings, 
                           QTranslator, 
@@ -38,7 +39,8 @@ from PyQt4.QtCore import (QObject,
 from PyQt4.QtGui import (QAction, 
                          QIcon,
                          QDockWidget,
-                         QTextDocument)
+                         QTextDocument,
+                         QIntValidator)
 
 # PostGIS import
 import psycopg2
@@ -240,6 +242,12 @@ class SearchPlus(QObject):
         self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
         self.dlg.setVisible(False)
         
+        # set validators for UTM text edit
+        intValidatorEasting = QIntValidator(-9999999, 9999999, self.dlg) # assumed that E and W are inserted as - +
+        intValidatorNorthing = QIntValidator(-9999999, 9999999, self.dlg) # assumed that S and N are inserted as - +
+        self.dlg.txtCoordX.setValidator(intValidatorEasting)
+        self.dlg.txtCoordY.setValidator(intValidatorNorthing)
+        
         # add first level combo box events
         self.dlg.cboStreet.currentIndexChanged.connect(self.resetNumbers)
         self.dlg.cboType.currentIndexChanged.connect(self.resetEquipments)
@@ -249,6 +257,8 @@ class SearchPlus(QObject):
         self.dlg.cboTopo.currentIndexChanged.connect(self.displayToponym)
         self.dlg.cboEquipment.currentIndexChanged.connect(self.displayEquipment)
         self.dlg.cboCadastre.currentIndexChanged.connect(self.displayCadastre)
+        self.dlg.txtCoordX.returnPressed.connect(self.displayUTM)
+        self.dlg.txtCoordY.returnPressed.connect(self.displayUTM)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -426,6 +436,23 @@ class SearchPlus(QObject):
         for record in records:
             self.dlg.cboEquipment.addItem(record[1], record[0])
         self.dlg.cboEquipment.blockSignals(False) 
+    
+    def displayUTM(self):
+        ''' Show UTM location on the canvas when set it in the relative tab
+        '''
+        X = self.dlg.txtCoordX.text()
+        if not X:
+            return
+        
+        Y = self.dlg.txtCoordY.text()
+        if not Y:
+            return
+        
+        geom = QgsGeometry.fromPoint( QgsPoint(float(X), float(Y)) )
+        message = 'X: {}\nY: {}'.format(X,Y)
+        
+        # display annotation with message at a specified position
+        self.displayAnnotation(geom, message)
     
     def displayCadastre(self):
         ''' Show cadastre data on the canvas when selected it in the relative tab
