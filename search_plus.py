@@ -109,6 +109,7 @@ class SearchPlus(QObject):
         
         # when connection is established, then set all GUI values
         self.connectionEstablished.connect(self.populateGui)
+        self.connectionEstablished.connect(self.setInitialScale)
     
     def loadPluginSettings(self):
         ''' Load plugin settings
@@ -136,6 +137,9 @@ class SearchPlus(QObject):
         self.CADASTRE_SCHEMA= self.settings.value('db/CADASTRE_SCHEMA', '')
         self.CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '')
         self.CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '')
+        
+        # get initial Scale
+        self.initalScale = self.settings.value('status/initialScale', 2500)
         
     
     # noinspection PyMethodMayBeStatic
@@ -259,7 +263,12 @@ class SearchPlus(QObject):
         self.dlg.cboCadastre.currentIndexChanged.connect(self.displayCadastre)
         self.dlg.txtCoordX.returnPressed.connect(self.displayUTM)
         self.dlg.txtCoordY.returnPressed.connect(self.displayUTM)
-
+    
+    def setInitialScale(self):
+        ''' Set initial scale of the canvas basing on config
+        '''
+        self.iface.mapCanvas().zoomScale(float(self.initalScale))
+    
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
