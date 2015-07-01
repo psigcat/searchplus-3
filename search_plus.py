@@ -102,6 +102,7 @@ class SearchPlus(QObject):
         self.actions = []
         self.menu = self.tr(u'&searchplus')
         self.connection = None
+        self.annotations = []
         
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'SearchPlus')
@@ -639,6 +640,13 @@ class SearchPlus(QObject):
         '''
         centroid = geom.centroid()
         
+        # clean previous annaotations:
+        for annotation in self.annotations:
+            scene = annotation.scene()
+            if scene:
+                scene.removeItem(annotation)
+        self.annotations = []
+        
         # build annotation
         textDoc =QTextDocument(message)
         item = QgsTextAnnotationItem( self.iface.mapCanvas() )
@@ -646,6 +654,9 @@ class SearchPlus(QObject):
         item.setFrameSize(textDoc.size())
         item.setDocument(textDoc)
         item.update()
+        
+        # add to annotations
+        self.annotations.append(item)
         
         # center in the centroid
         self.iface.mapCanvas().setCenter(centroid.asPoint())
