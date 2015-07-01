@@ -257,6 +257,7 @@ class SearchPlus(QObject):
         
         # add first level combo box events
         self.dlg.cboStreet.currentIndexChanged.connect(self.resetNumbers)
+        self.dlg.cboStreet.currentIndexChanged.connect(self.zoomOnStreet)
         self.dlg.cboType.currentIndexChanged.connect(self.resetEquipments)
         
         # add events to show information o the canvas
@@ -342,9 +343,9 @@ class SearchPlus(QObject):
         cursor = self.connection.cursor()
         
         # tab Carrerer
-        sqlquery = 'SELECT id, "{}", "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
+        sqlquery = 'SELECT id, "{}", "{}", ST_AsText(geom) FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
         cursor.execute(sqlquery)
-        records = [(-1, '', '')]
+        records = [(-1, '', '', '')]
         recs = cursor.fetchall()
         records.extend(recs)
             
@@ -386,6 +387,29 @@ class SearchPlus(QObject):
         for record in records:
             self.dlg.cboCadastre.addItem(record[1], record[0])
         self.dlg.cboCadastre.blockSignals(False)
+    
+    def zoomOnStreet(self):
+        ''' Zoom on the street with the prefined scale
+        '''
+        # get selected street
+        selected = self.dlg.cboStreet.currentText()
+        if selected == '':
+            return
+        
+        # get code
+        data = self.dlg.cboStreet.itemData( self.dlg.cboStreet.currentIndex() )
+        wkt = data[3] # to know the index see the query that populate the combo
+        
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom:
+            message = self.tr('Can not correctly get geometry')
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            return
+        
+        # zoom on it's centroid
+        centroid = geom.centroid()
+        self.iface.mapCanvas().setCenter(centroid.asPoint())
+        self.iface.mapCanvas().zoomScale( float(self.defaultZoomScale) )
     
     def resetNumbers(self):
         ''' Populate civic numbers depending on selected street. 
@@ -642,9 +666,13 @@ class SearchPlus(QObject):
         
         # clean previous annaotations:
         for annotation in self.annotations:
-            scene = annotation.scene()
-            if scene:
-                scene.removeItem(annotation)
+            try:
+                scene = annotation.scene()
+                if scene:
+                    scene.removeItem(annotation)
+            except:
+                # annotation can be erased by QGIS interface
+                pass
         self.annotations = []
         
         # build annotation
