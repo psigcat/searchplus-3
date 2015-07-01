@@ -19,8 +19,7 @@
  ***************************************************************************/
 """
 # 2To3 python compatibility
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import unicode_literals, division, print_function
 
 from qgis.utils import active_plugins
 from qgis.gui import (QgsMessageBar,
@@ -52,6 +51,10 @@ import resources_rc
 # Import the code for the dialog
 from search_plus_dockwidget import SearchPlusDockWidget
 import os.path
+
+import sys  
+reload(sys)  
+sys.setdefaultencoding('utf8')
 
 class SearchPlus(QObject):
     """QGIS Plugin Implementation."""
