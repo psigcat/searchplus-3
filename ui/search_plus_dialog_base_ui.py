@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'ui/search_plus_dialog_base.ui'
 #
-# Created: Tue Jun 30 20:00:45 2015
+# Created: Wed Jul  1 12:08:49 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,7 +26,12 @@ except AttributeError:
 class Ui_searchPlusDockWidget(object):
     def setupUi(self, searchPlusDockWidget):
         searchPlusDockWidget.setObjectName(_fromUtf8("searchPlusDockWidget"))
-        searchPlusDockWidget.resize(347, 209)
+        searchPlusDockWidget.resize(344, 174)
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Maximum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(searchPlusDockWidget.sizePolicy().hasHeightForWidth())
+        searchPlusDockWidget.setSizePolicy(sizePolicy)
         searchPlusDockWidget.setLocale(QtCore.QLocale(QtCore.QLocale.Catalan, QtCore.QLocale.Spain))
         searchPlusDockWidget.setFloating(True)
         searchPlusDockWidget.setFeatures(QtGui.QDockWidget.AllDockWidgetFeatures)
@@ -48,6 +53,7 @@ class Ui_searchPlusDockWidget(object):
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
         self.lblStreet = QtGui.QLabel(self.searchPlusStreetsTab)
+        self.lblStreet.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblStreet.setObjectName(_fromUtf8("lblStreet"))
         self.horizontalLayout_2.addWidget(self.lblStreet)
         self.cboStreet = SearchableComboBox(self.searchPlusStreetsTab)
@@ -59,6 +65,7 @@ class Ui_searchPlusDockWidget(object):
         self.horizontalLayout_3 = QtGui.QHBoxLayout()
         self.horizontalLayout_3.setObjectName(_fromUtf8("horizontalLayout_3"))
         self.lblNumber = QtGui.QLabel(self.searchPlusStreetsTab)
+        self.lblNumber.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblNumber.setObjectName(_fromUtf8("lblNumber"))
         self.horizontalLayout_3.addWidget(self.lblNumber)
         self.cboNumber = SearchableComboBox(self.searchPlusStreetsTab)
@@ -75,6 +82,7 @@ class Ui_searchPlusDockWidget(object):
         self.lblTopo = QtGui.QLabel(self.searchPlusToponimsTab)
         self.lblTopo.setAlignment(QtCore.Qt.AlignJustify|QtCore.Qt.AlignVCenter)
         self.lblTopo.setWordWrap(True)
+        self.lblTopo.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblTopo.setObjectName(_fromUtf8("lblTopo"))
         self.verticalLayout_3.addWidget(self.lblTopo)
         self.cboTopo = SearchableComboBox(self.searchPlusToponimsTab)
@@ -89,6 +97,7 @@ class Ui_searchPlusDockWidget(object):
         self.horizontalLayout_4 = QtGui.QHBoxLayout()
         self.horizontalLayout_4.setObjectName(_fromUtf8("horizontalLayout_4"))
         self.lblType = QtGui.QLabel(self.searchPlusEquipmentsTab)
+        self.lblType.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblType.setObjectName(_fromUtf8("lblType"))
         self.horizontalLayout_4.addWidget(self.lblType)
         self.cboType = SearchableComboBox(self.searchPlusEquipmentsTab)
@@ -100,6 +109,7 @@ class Ui_searchPlusDockWidget(object):
         self.horizontalLayout_5 = QtGui.QHBoxLayout()
         self.horizontalLayout_5.setObjectName(_fromUtf8("horizontalLayout_5"))
         self.lblEquipment = QtGui.QLabel(self.searchPlusEquipmentsTab)
+        self.lblEquipment.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblEquipment.setObjectName(_fromUtf8("lblEquipment"))
         self.horizontalLayout_5.addWidget(self.lblEquipment)
         self.cboEquipment = SearchableComboBox(self.searchPlusEquipmentsTab)
@@ -119,6 +129,7 @@ class Ui_searchPlusDockWidget(object):
         self.lblCadastre.setFont(font)
         self.lblCadastre.setAlignment(QtCore.Qt.AlignJustify|QtCore.Qt.AlignVCenter)
         self.lblCadastre.setWordWrap(True)
+        self.lblCadastre.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblCadastre.setObjectName(_fromUtf8("lblCadastre"))
         self.verticalLayout_5.addWidget(self.lblCadastre)
         self.cboCadastre = SearchableComboBox(self.searchPlusCadastreTab)
@@ -132,11 +143,13 @@ class Ui_searchPlusDockWidget(object):
         self.verticalLayout_6.setObjectName(_fromUtf8("verticalLayout_6"))
         self.lblUTM = QtGui.QLabel(self.searchPlusUTMTab)
         self.lblUTM.setWordWrap(True)
+        self.lblUTM.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.lblUTM.setObjectName(_fromUtf8("lblUTM"))
         self.verticalLayout_6.addWidget(self.lblUTM)
         self.horizontalLayout_6 = QtGui.QHBoxLayout()
         self.horizontalLayout_6.setObjectName(_fromUtf8("horizontalLayout_6"))
         self.label_8 = QtGui.QLabel(self.searchPlusUTMTab)
+        self.label_8.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.label_8.setObjectName(_fromUtf8("label_8"))
         self.horizontalLayout_6.addWidget(self.label_8)
         self.txtCoordX = QtGui.QLineEdit(self.searchPlusUTMTab)
@@ -147,6 +160,7 @@ class Ui_searchPlusDockWidget(object):
         self.horizontalLayout_7 = QtGui.QHBoxLayout()
         self.horizontalLayout_7.setObjectName(_fromUtf8("horizontalLayout_7"))
         self.label_9 = QtGui.QLabel(self.searchPlusUTMTab)
+        self.label_9.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.label_9.setObjectName(_fromUtf8("label_9"))
         self.horizontalLayout_7.addWidget(self.label_9)
         self.txtCoordY = QtGui.QLineEdit(self.searchPlusUTMTab)
@@ -155,19 +169,6 @@ class Ui_searchPlusDockWidget(object):
         self.verticalLayout_6.addLayout(self.horizontalLayout_7)
         self.searchPlusTabMain.addTab(self.searchPlusUTMTab, _fromUtf8(""))
         self.verticalLayout.addWidget(self.searchPlusTabMain)
-        self.horizontalLayout = QtGui.QHBoxLayout()
-        self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
-        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        self.horizontalLayout.addItem(spacerItem)
-        self.pushButton = QtGui.QPushButton(self.contents)
-        font = QtGui.QFont()
-        font.setPointSize(9)
-        font.setBold(False)
-        font.setWeight(50)
-        self.pushButton.setFont(font)
-        self.pushButton.setObjectName(_fromUtf8("pushButton"))
-        self.horizontalLayout.addWidget(self.pushButton)
-        self.verticalLayout.addLayout(self.horizontalLayout)
         searchPlusDockWidget.setWidget(self.contents)
 
         self.retranslateUi(searchPlusDockWidget)
@@ -190,6 +191,5 @@ class Ui_searchPlusDockWidget(object):
         self.label_8.setText(_translate("searchPlusDockWidget", "X:", None))
         self.label_9.setText(_translate("searchPlusDockWidget", "Y:", None))
         self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusUTMTab), _translate("searchPlusDockWidget", "UTM", None))
-        self.pushButton.setText(_translate("searchPlusDockWidget", "Recerca", None))
 
 from custom_widgets.searchable_combobox import SearchableComboBox
