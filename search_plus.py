@@ -28,7 +28,8 @@ from qgis.gui import (QgsMessageBar,
 from qgis.core import (QgsCredentials,
                        QgsDataSourceURI,
                        QgsGeometry,
-                       QgsPoint
+                       QgsPoint,
+                       QgsLogger
                        )
 from PyQt4.QtCore import (QObject,
                           QSettings, 
@@ -320,10 +321,31 @@ class SearchPlus(QObject):
         DATABASE_PORT = qgisSettings.value(root+"port", '')
         DATABASE_USER = qgisSettings.value(root+"username", '')
         DATABASE_PWD = qgisSettings.value(root+"password", '')
-
+        SSL_MODE = qgisSettings.value(root+"sslmode", QgsDataSourceURI.SSLdisable)
+        
+        # get realm of the connection (realm don't have use ry pwd)
+        # realm is the connectioInfo from QgsDataSourceURI
         self.uri = QgsDataSourceURI()
-        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD)
+        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, '',  '', int(SSL_MODE))
+        connInfo = self.uri.connectionInfo()
+        
+        # get credentials and mutate cache => need lock
+        QgsCredentials.instance().lock()
 
+        (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get( connInfo, DATABASE_USER, DATABASE_PWD )
+        if not ok:
+            QgsCredentials.instance().unlock()
+            message = self.tr('Refused or Can not get credentials for realm: {} '.format(connInfo))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+            return
+        
+        # refill the cache again
+        QgsCredentials.instance().put( connInfo, DATABASE_USER, DATABASE_PWD )
+        QgsCredentials.instance().unlock()
+        
+        # add user and password if not set in the previous setConnection 
+        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD, int(SSL_MODE))
+        
         # connect
         try:
             self.connection = psycopg2.connect( self.uri.connectionInfo().encode('utf-8') )
