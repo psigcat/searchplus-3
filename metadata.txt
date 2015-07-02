@@ -9,7 +9,8 @@
 [general]
 name=searchplus
 qgisMinimumVersion=2.0
-description=Toponomastic searcher
+description=searchplus is a Plugin to perform and define multiple searches.
+about=This plugin add a widget that allows searches on a street, place names, equipment, and others.
 version=0.1
 author=Luigi Pirelli, David Erill, Carlos Lopez (http://psig.es/)
 email=luipir@gmail.com
