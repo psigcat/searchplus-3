@@ -23,23 +23,27 @@ from __future__ import unicode_literals, division, print_function
 
 from qgis.utils import active_plugins
 from qgis.gui import (QgsMessageBar,
-                      QgsTextAnnotationItem)
+                      QgsTextAnnotationItem
+                      )
 from qgis.core import (QgsCredentials,
                        QgsDataSourceURI,
                        QgsGeometry,
-                       QgsPoint)
+                       QgsPoint
+                       )
 from PyQt4.QtCore import (QObject,
                           QSettings, 
                           QTranslator, 
                           qVersion, 
                           QCoreApplication,
                           Qt,
-                          pyqtSignal)
+                          pyqtSignal
+                          )
 from PyQt4.QtGui import (QAction, 
                          QIcon,
                          QDockWidget,
                          QTextDocument,
-                         QIntValidator)
+                         QIntValidator
+                         )
 
 # PostGIS import
 import psycopg2
@@ -117,6 +121,9 @@ class SearchPlus(QObject):
     def loadPluginSettings(self):
         ''' Load plugin settings
         '''
+        # get db credentials
+        self.CONNECTION_NAME = self.settings.value('db/CONNECTION_NAME', '')
+
         # get all db configuration table/columns to load to populate the GUI
         self.STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
         self.STREET_LAYER= self.settings.value('db/STREET_LAYER', '')
@@ -297,8 +304,7 @@ class SearchPlus(QObject):
             pass
         
         # get default configured connection name
-        connName = self.settings.value('db/CONNECTION_NAME', '')
-        if not connName:
+        if not self.CONNECTION_NAME:
             confFileName = self.setting.fileName()
             message = self.tr('No default connection is configured in {}'.format(confFileName))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
@@ -308,25 +314,21 @@ class SearchPlus(QObject):
         # get connection data
         qgisSettings = QSettings()
         
-        root = "/PostgreSQL/connections/"+connName+"/"
+        root = "/PostgreSQL/connections/"+self.CONNECTION_NAME+"/"
         DATABASE_HOST = qgisSettings.value(root+"host", '')
         DATABASE_NAME = qgisSettings.value(root+"database", '')
         DATABASE_PORT = qgisSettings.value(root+"port", '')
         DATABASE_USER = qgisSettings.value(root+"username", '')
         DATABASE_PWD = qgisSettings.value(root+"password", '')
-        
-        (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get( "", DATABASE_USER, DATABASE_PWD )
-        if not ok:
-            return
-        
+
         self.uri = QgsDataSourceURI()
         self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD)
-        
+
         # connect
         try:
             self.connection = psycopg2.connect( self.uri.connectionInfo().encode('utf-8') )
         except Exception as ex:
-            message = self.tr('Can not connect to connection named: {} for reason: {} '.format(connName, str(ex)))
+            message = self.tr('Can not connect to connection named: {} for reason: {} '.format(self.CONNECTION_NAME, str(ex)))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
             return
         
