@@ -23,23 +23,28 @@ from __future__ import unicode_literals, division, print_function
 
 from qgis.utils import active_plugins
 from qgis.gui import (QgsMessageBar,
-                      QgsTextAnnotationItem)
+                      QgsTextAnnotationItem
+                      )
 from qgis.core import (QgsCredentials,
                        QgsDataSourceURI,
                        QgsGeometry,
-                       QgsPoint)
+                       QgsPoint,
+                       QgsLogger
+                       )
 from PyQt4.QtCore import (QObject,
                           QSettings, 
                           QTranslator, 
                           qVersion, 
                           QCoreApplication,
                           Qt,
-                          pyqtSignal)
+                          pyqtSignal
+                          )
 from PyQt4.QtGui import (QAction, 
                          QIcon,
                          QDockWidget,
                          QTextDocument,
-                         QIntValidator)
+                         QIntValidator
+                         )
 
 # PostGIS import
 import psycopg2
@@ -117,6 +122,9 @@ class SearchPlus(QObject):
     def loadPluginSettings(self):
         ''' Load plugin settings
         '''
+        # get db credentials
+        self.CONNECTION_NAME = self.settings.value('db/CONNECTION_NAME', '')
+
         # get all db configuration table/columns to load to populate the GUI
         self.STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
         self.STREET_LAYER= self.settings.value('db/STREET_LAYER', '')
@@ -297,8 +305,7 @@ class SearchPlus(QObject):
             pass
         
         # get default configured connection name
-        connName = self.settings.value('db/CONNECTION_NAME', '')
-        if not connName:
+        if not self.CONNECTION_NAME:
             confFileName = self.setting.fileName()
             message = self.tr('No default connection is configured in {}'.format(confFileName))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
@@ -308,27 +315,51 @@ class SearchPlus(QObject):
         # get connection data
         qgisSettings = QSettings()
         
-        root = "/PostgreSQL/connections/"+connName+"/"
+        root = "/PostgreSQL/connections/"+self.CONNECTION_NAME+"/"
         DATABASE_HOST = qgisSettings.value(root+"host", '')
         DATABASE_NAME = qgisSettings.value(root+"database", '')
         DATABASE_PORT = qgisSettings.value(root+"port", '')
         DATABASE_USER = qgisSettings.value(root+"username", '')
         DATABASE_PWD = qgisSettings.value(root+"password", '')
+        SSL_MODE = qgisSettings.value(root+"sslmode", QgsDataSourceURI.SSLdisable)
         
-        (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get( "", DATABASE_USER, DATABASE_PWD )
-        if not ok:
-            return
-        
+        # get realm of the connection (realm don't have use ry pwd)
+        # realm is the connectioInfo from QgsDataSourceURI
         self.uri = QgsDataSourceURI()
-        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD)
+        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, '',  '', int(SSL_MODE))
+        connInfo = self.uri.connectionInfo()
+        
+        # get credentials if at least there's no PWD
+        if not DATABASE_PWD:
+            # get credentials and mutate cache => need lock
+            QgsCredentials.instance().lock()
+    
+            (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get( connInfo, DATABASE_USER, DATABASE_PWD )
+            if not ok:
+                QgsCredentials.instance().unlock()
+                message = self.tr('Refused or Can not get credentials for realm: {} '.format(connInfo))
+                self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+                return
+            
+            # unlock credentials... but not add to cache
+            # wait to verify that connection is ok to add into the cache
+            QgsCredentials.instance().unlock()
+        
+        # add user and password if not set in the previous setConnection 
+        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD, int(SSL_MODE))
         
         # connect
         try:
             self.connection = psycopg2.connect( self.uri.connectionInfo().encode('utf-8') )
         except Exception as ex:
-            message = self.tr('Can not connect to connection named: {} for reason: {} '.format(connName, str(ex)))
+            message = self.tr('Can not connect to connection named: {} for reason: {} '.format(self.CONNECTION_NAME, str(ex)))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
             return
+        else:
+            # last credential were ok, so record them in the cache
+            QgsCredentials.instance().lock()
+            QgsCredentials.instance().put( connInfo, DATABASE_USER, DATABASE_PWD )
+            QgsCredentials.instance().unlock()
         
         # emit signal that connection is established
         self.connectionEstablished.emit()
