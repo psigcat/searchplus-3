@@ -245,10 +245,10 @@ class SearchPlus(QObject):
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/SearchPlus/icon.png'
+        icon_path = ':/plugins/SearchPlus/icon_searchplus.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Cercador toponomàstica'),
+            text=self.tr(u'Cercador avançat'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
