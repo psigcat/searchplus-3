@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- SearchPlus - A QGIS plugin Toponomastic searcher
+ SearchPlus - A QGIS plugin Toponomastic searcherdefault
                               -------------------
         begin                : 2015-06-19
         git sha              : $Format:%H$
@@ -61,6 +61,7 @@ import sys
 reload(sys)  
 sys.setdefaultencoding('utf8')
 
+
 class SearchPlus(QObject):
     """QGIS Plugin Implementation."""
 
@@ -117,11 +118,12 @@ class SearchPlus(QObject):
         self.iface.initializationCompleted.connect(self.initConnection)
         
         # when connection is established, then set all GUI values
-        self.connectionEstablished.connect(self.populateGui)
+        self.connectionEstablished.connect(self.populateGui)    
+    
     
     def loadPluginSettings(self):
         ''' Load plugin settings
-        '''
+        '''                   
         # get db credentials
         self.CONNECTION_NAME = self.settings.value('db/CONNECTION_NAME', '')
 
@@ -242,6 +244,7 @@ class SearchPlus(QObject):
 
         return action
 
+        
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -275,6 +278,7 @@ class SearchPlus(QObject):
         self.dlg.cboCadastre.currentIndexChanged.connect(self.displayCadastre)
         self.dlg.txtCoordX.returnPressed.connect(self.displayUTM)
         self.dlg.txtCoordY.returnPressed.connect(self.displayUTM)
+        
     
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -290,11 +294,12 @@ class SearchPlus(QObject):
             self.dlg.deleteLater()
             del self.dlg
 
+            
     def initConnection(self):
         ''' Establish connection with the default credentials
         Connection name is get from QGIS connection. Will be used the connection
         configured int he plugin settings
-        '''
+        '''         
         if self.dlg and not self.dlg.isVisible():
             return
         
@@ -334,7 +339,7 @@ class SearchPlus(QObject):
             # get credentials and mutate cache => need lock
             QgsCredentials.instance().lock()
     
-            (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get( connInfo, DATABASE_USER, DATABASE_PWD )
+            (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get(connInfo, DATABASE_USER, DATABASE_PWD)
             if not ok:
                 QgsCredentials.instance().unlock()
                 message = self.tr('Refused or Can not get credentials for realm: {} '.format(connInfo))
@@ -348,9 +353,9 @@ class SearchPlus(QObject):
         # add user and password if not set in the previous setConnection 
         self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD, int(SSL_MODE))
         
-        # connect
+        # connect          
         try:
-            self.connection = psycopg2.connect( self.uri.connectionInfo().encode('utf-8') )
+            self.connection = psycopg2.connect(self.uri.connectionInfo().encode('utf-8'))
         except Exception as ex:
             message = self.tr('Can not connect to connection named: {} for reason: {} '.format(self.CONNECTION_NAME, str(ex)))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
@@ -358,66 +363,95 @@ class SearchPlus(QObject):
         else:
             # last credential were ok, so record them in the cache
             QgsCredentials.instance().lock()
-            QgsCredentials.instance().put( connInfo, DATABASE_USER, DATABASE_PWD )
+            QgsCredentials.instance().put(connInfo, DATABASE_USER, DATABASE_PWD)
             QgsCredentials.instance().unlock()
-        
+                   
         # emit signal that connection is established
         self.connectionEstablished.emit()
     
+    
+    def checkTable(self, schemaName, tableName):
+        
+        exists = True
+        sql = "SELECT * FROM pg_tables WHERE schemaname = '"+schemaName+"' AND tablename = '"+tableName+"'"
+        cursor = self.connection.cursor()        
+        rowcount = cursor.execute(sql)         
+        if cursor.rowcount == 0:      
+            exists = False
+        return exists       
+        
+    
     def populateGui(self):
         ''' Populate the interface with values get from DB
-        '''
+        '''    
         if not self.connection:
             return
-        
+            
         # get cursor on wich execute query
         cursor = self.connection.cursor()
         
-        # tab Carrerer
-        sqlquery = 'SELECT id, "{}", "{}", ST_AsText(geom) FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
-        cursor.execute(sqlquery)
-        records = [(-1, '', '', '')]
-        recs = cursor.fetchall()
-        records.extend(recs)
-            
-        #records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
-        self.dlg.cboStreet.blockSignals(True)
-        self.dlg.cboStreet.clear()
-        for record in records:
-            self.dlg.cboStreet.addItem(record[1], record)
-        self.dlg.cboStreet.blockSignals(False)
-        
-        # tab Toponyms
-        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.PLACENAME_FIELD, self.PLACENAME_SCHEMA, self.PLACENAME_LAYER, self.PLACENAME_FIELD)
-        cursor.execute(sqlquery)
-        records = [(-1, '')]
-        records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
-        self.dlg.cboTopo.blockSignals(True)
-        self.dlg.cboTopo.clear()
-        for record in records:
-            self.dlg.cboTopo.addItem(record[1], record[0])
-        self.dlg.cboTopo.blockSignals(False)
-        
-        # tab equipments
-        sqlquery = 'SELECT "{}" FROM "{}"."{}" GROUP BY "{}" ORDER BY "{}"'.format(self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_TYPE)
-        cursor.execute(sqlquery)
-        records = ['']
-        records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
-        self.dlg.cboType.blockSignals(True)
-        self.dlg.cboType.clear()
-        self.dlg.cboType.addItems(records)
-        self.dlg.cboType.blockSignals(False)
-        
         # tab cadastre
         sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.CADASTRE_FIELD_CODE, self.CADASTRE_SCHEMA, self.CADASTRE_LAYER, self.CADASTRE_FIELD_CODE)
-        cursor.execute(sqlquery)
-        records = [(-1, '')]
-        records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
-        self.dlg.cboCadastre.blockSignals(True)
-        self.dlg.cboCadastre.clear()
-        for record in records:
-            self.dlg.cboCadastre.addItem(record[1], record[0])
-        self.dlg.cboCadastre.blockSignals(False)
+        exists = self.checkTable(self.CADASTRE_SCHEMA, self.CADASTRE_LAYER)        
+        if exists:        
+            cursor.execute(sqlquery)
+            records = [(-1, '')]
+            records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
+            self.dlg.cboCadastre.blockSignals(True)
+            self.dlg.cboCadastre.clear()
+            for record in records:
+                self.dlg.cboCadastre.addItem(record[1], record[0])
+            self.dlg.cboCadastre.blockSignals(False)
+        else:
+            self.dlg.searchPlusTabMain.removeTab(3)  
+                    
+        # tab equipments
+        exists = self.checkTable(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)        
+        if exists:
+            sqlquery = 'SELECT "{}" FROM "{}"."{}" GROUP BY "{}" ORDER BY "{}"'.format(self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_TYPE)
+            cursor.execute(sqlquery)
+            records = ['']
+            records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
+            self.dlg.cboType.blockSignals(True)
+            self.dlg.cboType.clear()
+            self.dlg.cboType.addItems(records)
+            self.dlg.cboType.blockSignals(False)
+        else:
+            self.dlg.searchPlusTabMain.removeTab(2)  
+        
+        # tab Toponyms
+        exists = self.checkTable(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)
+        if exists:
+            sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.PLACENAME_FIELD, self.PLACENAME_SCHEMA, self.PLACENAME_LAYER, self.PLACENAME_FIELD)
+            cursor.execute(sqlquery)
+            records = [(-1, '')]
+            records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
+            self.dlg.cboTopo.blockSignals(True)
+            self.dlg.cboTopo.clear()
+            for record in records:
+                self.dlg.cboTopo.addItem(record[1], record[0])
+            self.dlg.cboTopo.blockSignals(False)
+        else:
+            self.dlg.searchPlusTabMain.removeTab(1)                  
+            
+        # tab Carrerer
+        existsStreet = self.checkTable(self.STREET_SCHEMA, self.STREET_LAYER)
+        existsPortal = self.checkTable(self.PORTAL_SCHEMA, self.PORTAL_LAYER)        
+        if existsStreet and existsPortal:        
+            sqlquery = 'SELECT id, "{}", "{}", ST_AsText(geom) FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
+            cursor.execute(sqlquery)
+            records = [(-1, '', '', '')]
+            recs = cursor.fetchall()
+            records.extend(recs)
+            # records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
+            self.dlg.cboStreet.blockSignals(True)
+            self.dlg.cboStreet.clear()
+            for record in records:
+                self.dlg.cboStreet.addItem(record[1], record)
+            self.dlg.cboStreet.blockSignals(False)
+        else:
+            self.dlg.searchPlusTabMain.removeTab(0)          
+    
     
     def zoomOnStreet(self):
         ''' Zoom on the street with the prefined scale
@@ -441,6 +475,7 @@ class SearchPlus(QObject):
         centroid = geom.centroid()
         self.iface.mapCanvas().setCenter(centroid.asPoint())
         self.iface.mapCanvas().zoomScale( float(self.defaultZoomScale) )
+    
     
     def resetNumbers(self):
         ''' Populate civic numbers depending on selected street. 
@@ -474,6 +509,7 @@ class SearchPlus(QObject):
             self.dlg.cboNumber.addItem(record[1], record[0])
         self.dlg.cboNumber.blockSignals(False)        
     
+    
     def resetEquipments(self):
         ''' Populate equipments combo depending on selected type. 
         Available equipments EQUIPMENT_FIELD_NAME belonging to the same EQUIPMENT_FIELD_TYPE of 
@@ -502,6 +538,7 @@ class SearchPlus(QObject):
             self.dlg.cboEquipment.addItem(record[1], record[0])
         self.dlg.cboEquipment.blockSignals(False) 
     
+    
     def displayUTM(self):
         ''' Show UTM location on the canvas when set it in the relative tab
         '''
@@ -518,6 +555,7 @@ class SearchPlus(QObject):
         
         # display annotation with message at a specified position
         self.displayAnnotation(geom, message)
+    
     
     def displayCadastre(self):
         ''' Show cadastre data on the canvas when selected it in the relative tab
@@ -558,6 +596,7 @@ class SearchPlus(QObject):
         
         # display annotation with message at a specified position
         self.displayAnnotation(geom, cadastre)
+         
          
     def displayEquipment(self):
         ''' Show equipment data on the canvas when selected it in the relative tab
@@ -603,6 +642,7 @@ class SearchPlus(QObject):
         # display annotation with message at a specified position
         self.displayAnnotation(geom, equipment)
          
+         
     def displayToponym(self):
         ''' Show toponym data on the canvas when selected it in the relative tab
         '''
@@ -642,6 +682,7 @@ class SearchPlus(QObject):
         
         # display annotation with message at a specified position
         self.displayAnnotation(geom, toponym)
+         
          
     def displayStreetData(self):
         ''' Show street data on the canvas when selected street and number in street tab
@@ -690,6 +731,7 @@ class SearchPlus(QObject):
         # display annotation with message at a specified position
         self.displayAnnotation(geom, message)
         
+        
     def displayAnnotation(self, geom, message):
         ''' Display a specific message in the centroid of a specific geometry
         '''
@@ -722,8 +764,9 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().zoomScale( float(self.defaultZoomScale) )
         self.iface.mapCanvas().refresh()
     
+    
     def run(self):
-        """Run method activated byt the toolbar action button"""
+        """Run method activated byt the toolbar action button"""         
         if self.dlg and not self.dlg.isVisible():
             # check if the plugin is active
             if not self.pluginName in active_plugins:
@@ -731,6 +774,8 @@ class SearchPlus(QObject):
             
             self.dlg.show()
         
-        # if not, setup connection
+        # if not, setup connection               
         if not self.connection:
             self.initConnection()
+        else:
+            self.iface.messageBar().pushMessage("Already connected", QgsMessageBar.WARNING)                

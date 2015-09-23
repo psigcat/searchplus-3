@@ -1,5 +1,6 @@
 #projecte
 *.bat
+*.qgs
 
 # temp files
 *~

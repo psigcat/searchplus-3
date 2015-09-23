@@ -29,7 +29,7 @@ homepage=https://github.com/psigcat/searchplus
 tracker=https://github.com/psigcat/searchplus/issues
 repository=https://github.com/psigcat/searchplus
 category=Plugins
-icon=icon.png
+icon=icon_searchplus.png
 # experimental flag
 experimental=True
 
