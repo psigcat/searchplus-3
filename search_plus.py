@@ -102,7 +102,7 @@ class SearchPlus(QObject):
         self.settings.setIniCodec( sys.stdout.encoding )
         
         # load plugin settings
-        self.loadPluginSettings()
+        self.loadPluginSettings()      
         
         # Declare instance attributes
         self.actions = []
@@ -155,6 +155,32 @@ class SearchPlus(QObject):
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
         
     
+    def getFullExtent(self):
+               
+        # get full extent
+        canvas = self.iface.mapCanvas()
+        self.xMax = int(canvas.fullExtent().xMaximum())
+        self.xMin = int(canvas.fullExtent().xMinimum())
+        self.yMax = int(canvas.fullExtent().yMaximum())
+        self.yMin = int(canvas.fullExtent().yMinimum())
+        try:
+            self.xOffset = (self.xMax - self.xMin) * 0.10
+            self.yOffset = (self.yMax - self.yMin) * 0.10   
+        except:
+            self.xOffset = 1000
+            self.yOffset = 1000      
+            
+        # set validators for UTM text edit
+        self.xMinVal = int(self.xMin - self.xOffset)
+        self.xMaxVal = int(self.xMax + self.xOffset)
+        self.yMinVal = int(self.yMin - self.yOffset)
+        self.yMaxVal = int(self.yMax + self.yOffset)             
+        self.intValidatorX = QIntValidator(self.xMinVal, self.xMaxVal, self.dlg) # assumed that E and W are inserted as - +
+        self.intValidatorY = QIntValidator(self.yMinVal, self.yMaxVal, self.dlg) # assumed that S and N are inserted as - +
+        self.dlg.txtCoordX.setValidator(self.intValidatorX)
+        self.dlg.txtCoordY.setValidator(self.intValidatorY)            
+            
+            
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
@@ -260,12 +286,6 @@ class SearchPlus(QObject):
         self.iface.mainWindow().addDockWidget(Qt.TopDockWidgetArea, self.dlg)
         self.dlg.setVisible(False)
         
-        # set validators for UTM text edit
-        intValidatorEasting = QIntValidator(-9999999, 9999999, self.dlg) # assumed that E and W are inserted as - +
-        intValidatorNorthing = QIntValidator(-9999999, 9999999, self.dlg) # assumed that S and N are inserted as - +
-        self.dlg.txtCoordX.setValidator(intValidatorEasting)
-        self.dlg.txtCoordY.setValidator(intValidatorNorthing)
-        
         # add first level combo box events
         self.dlg.cboStreet.currentIndexChanged.connect(self.resetNumbers)
         self.dlg.cboStreet.currentIndexChanged.connect(self.zoomOnStreet)
@@ -283,9 +303,7 @@ class SearchPlus(QObject):
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginMenu(
-                self.tr(u'&searchplus'),
-                action)
+            self.iface.removePluginMenu(self.tr(u'&searchplus'), action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
@@ -299,7 +317,7 @@ class SearchPlus(QObject):
         ''' Establish connection with the default credentials
         Connection name is get from QGIS connection. Will be used the connection
         configured int he plugin settings
-        '''         
+        '''          
         if self.dlg and not self.dlg.isVisible():
             return
         
@@ -539,18 +557,49 @@ class SearchPlus(QObject):
         self.dlg.cboEquipment.blockSignals(False) 
     
     
+    def validateX(self):   
+        X = int(self.dlg.txtCoordX.text())
+        if X > self.xMinVal and X < self.xMaxVal:
+            return True
+        else:
+            return False
+            
+            
+    def validateY(self):       
+        Y = int(self.dlg.txtCoordY.text())
+        if Y > self.yMinVal and Y < self.yMaxVal:
+            return True
+        else:
+            return False      
+            
+    
     def displayUTM(self):
         ''' Show UTM location on the canvas when set it in the relative tab
-        '''
+        '''                     
         X = self.dlg.txtCoordX.text()
         if not X:
+            message = "Coordinate X not specified"
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
             return
-        
-        Y = self.dlg.txtCoordY.text()
+        Y = self.dlg.txtCoordY.text()  
         if not Y:
+            message = "Coordinate Y not specified"
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)           
             return
         
-        geom = QgsGeometry.fromPoint( QgsPoint(float(X), float(Y)) )
+        # check if coordinates are within the interval
+        valX = self.validateX()
+        if not valX:
+            message = "Coordinate X is out of the valid interval. It should be between "+str(self.xMinVal)+" and "+str(self.xMaxVal)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+            return
+        valY = self.validateY()
+        if not valY:
+            message = "Coordinate Y is out of the valid interval, It should be between "+str(self.yMinVal)+" and "+str(self.yMaxVal)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+            return            
+            
+        geom = QgsGeometry.fromPoint(QgsPoint(float(X), float(Y)))
         message = 'X: {}\nY: {}'.format(X,Y)
         
         # display annotation with message at a specified position
@@ -749,8 +798,8 @@ class SearchPlus(QObject):
         self.annotations = []
         
         # build annotation
-        textDoc =QTextDocument(message)
-        item = QgsTextAnnotationItem( self.iface.mapCanvas() )
+        textDoc = QTextDocument(message)
+        item = QgsTextAnnotationItem(self.iface.mapCanvas())
         item.setMapPosition(centroid.asPoint())
         item.setFrameSize(textDoc.size())
         item.setDocument(textDoc)
@@ -761,7 +810,7 @@ class SearchPlus(QObject):
         
         # center in the centroid
         self.iface.mapCanvas().setCenter(centroid.asPoint())
-        self.iface.mapCanvas().zoomScale( float(self.defaultZoomScale) )
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
         self.iface.mapCanvas().refresh()
     
     
@@ -771,11 +820,11 @@ class SearchPlus(QObject):
             # check if the plugin is active
             if not self.pluginName in active_plugins:
                 return
-            
+            self.getFullExtent()            
             self.dlg.show()
         
         # if not, setup connection               
         if not self.connection:
-            self.initConnection()
-        else:
-            self.iface.messageBar().pushMessage("Already connected", QgsMessageBar.WARNING)                
+            self.initConnection()      
+            
+
