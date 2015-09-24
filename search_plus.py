@@ -22,29 +22,10 @@
 from __future__ import unicode_literals, division, print_function
 
 from qgis.utils import active_plugins
-from qgis.gui import (QgsMessageBar,
-                      QgsTextAnnotationItem
-                      )
-from qgis.core import (QgsCredentials,
-                       QgsDataSourceURI,
-                       QgsGeometry,
-                       QgsPoint,
-                       QgsLogger
-                       )
-from PyQt4.QtCore import (QObject,
-                          QSettings, 
-                          QTranslator, 
-                          qVersion, 
-                          QCoreApplication,
-                          Qt,
-                          pyqtSignal
-                          )
-from PyQt4.QtGui import (QAction, 
-                         QIcon,
-                         QDockWidget,
-                         QTextDocument,
-                         QIntValidator
-                         )
+from qgis.gui import QgsMessageBar, QgsTextAnnotationItem
+from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsLogger, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField
+from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
+from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
 
 # PostGIS import
 import psycopg2
@@ -109,6 +90,9 @@ class SearchPlus(QObject):
         self.menu = self.tr(u'&searchplus')
         self.connection = None
         self.annotations = []
+        self.placenameMemLayer = None    
+        self.cadastreMemLayer = None  
+        self.equipmentMemLayer = None          
         
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'SearchPlus')
@@ -154,6 +138,21 @@ class SearchPlus(QObject):
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
         
+        
+    def getLayers(self): 
+        
+        # Iterate over all layers to get the ones set in config file
+        layers = self.iface.legendInterface().layers()
+        for cur_layer in layers:      
+            if cur_layer.name() == self.STREET_LAYER:
+                self.streetLayer = cur_layer
+            if cur_layer.name() == self.PLACENAME_LAYER:
+                self.placenameLayer = cur_layer     
+            if cur_layer.name() == self.CADASTRE_LAYER:
+                self.cadastreLayer = cur_layer   
+            if cur_layer.name() == self.EQUIPMENT_LAYER:
+                self.equipmentLayer = cur_layer                     
+    
     
     def getFullExtent(self):
                
@@ -197,17 +196,7 @@ class SearchPlus(QObject):
         return QCoreApplication.translate('SearchPlus', message)
 
 
-    def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+    def add_action(self, icon_path, text, callback, enabled_flag=True, add_to_menu=True, add_to_toolbar=True, status_tip=None, whats_this=None, parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -262,9 +251,7 @@ class SearchPlus(QObject):
             self.toolbar.addAction(action)
 
         if add_to_menu:
-            self.iface.addPluginToMenu(
-                self.menu,
-                action)
+            self.iface.addPluginToMenu(self.menu, action)
 
         self.actions.append(action)
 
@@ -275,11 +262,7 @@ class SearchPlus(QObject):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         icon_path = ':/plugins/SearchPlus/icon_searchplus.png'
-        self.add_action(
-            icon_path,
-            text=self.tr(u'Cercador avançat'),
-            callback=self.run,
-            parent=self.iface.mainWindow())
+        self.add_action(icon_path, text=self.tr(u'Cercador avançat'), callback=self.run, parent=self.iface.mainWindow())
 
         # Create the dock widget and dock it but hide it waiting the ond of qgis loading
         self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
@@ -480,7 +463,7 @@ class SearchPlus(QObject):
             return
         
         # get code
-        data = self.dlg.cboStreet.itemData( self.dlg.cboStreet.currentIndex() )
+        data = self.dlg.cboStreet.itemData(self.dlg.cboStreet.currentIndex())
         wkt = data[3] # to know the index see the query that populate the combo
         
         geom = QgsGeometry.fromWkt(wkt)
@@ -492,7 +475,7 @@ class SearchPlus(QObject):
         # zoom on it's centroid
         centroid = geom.centroid()
         self.iface.mapCanvas().setCenter(centroid.asPoint())
-        self.iface.mapCanvas().zoomScale( float(self.defaultZoomScale) )
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
     
     
     def resetNumbers(self):
@@ -573,6 +556,63 @@ class SearchPlus(QObject):
             return False      
             
     
+    def deleteFeatures(self, layer):
+    
+        if layer is not None:
+            it = layer.getFeatures()
+            ids = [i.id() for i in it]
+            layer.dataProvider().deleteFeatures(ids)    
+            layer.commitChanges()            
+
+            
+    # Copy from Arbres to memory layer
+    def copySelected(self, layer, mem_layer, geom_type):
+            
+        # Create memory layer if not already set
+        if mem_layer is None: 
+            uri = geom_type+"?crs=epsg:25831" 
+            mem_layer = QgsVectorLayer(uri, "selected_"+layer.name(), "memory")            
+
+            # TODO: Load style
+            #mem_layer.loadNamedStyle(self.path_qml)            
+         
+            # Copy attributes from main layer to memory layer
+            attrib_names = layer.dataProvider().fields()
+            names_list = attrib_names.toList()
+            newattributeList = []
+            for attrib in names_list:
+                aux = mem_layer.fieldNameIndex(attrib.name())
+                if aux == -1:
+                    newattributeList.append(QgsField(attrib.name(), attrib.type()))
+            mem_layer.dataProvider().addAttributes(newattributeList)
+            mem_layer.updateFields()
+            QgsMapLayerRegistry.instance().addMapLayer(mem_layer)   
+     
+        # Prepare memory layer for editing
+        mem_layer.startEditing()
+
+        # Delete previous features
+        self.deleteFeatures(mem_layer)
+        
+        # Iterate over selected features   
+        cfeatures = []
+        for sel_feature in layer.selectedFeatures():
+            attributes = []
+            attributes.extend(sel_feature.attributes())
+            cfeature = QgsFeature()    
+            cfeature.setGeometry(sel_feature.geometry())
+            cfeature.setAttributes(attributes)
+            cfeatures.append(cfeature)
+                     
+        # Add features, commit changes and refresh canvas
+        mem_layer.dataProvider().addFeatures(cfeatures)             
+        mem_layer.commitChanges()
+        self.iface.mapCanvas().refresh() 
+        self.iface.mapCanvas().zoomToSelected(layer)
+        
+        return mem_layer
+
+        
     def displayUTM(self):
         ''' Show UTM location on the canvas when set it in the relative tab
         '''                     
@@ -612,13 +652,13 @@ class SearchPlus(QObject):
         # preconditions
         if not self.connection:
             return
-
+        
         cadastre = self.dlg.cboCadastre.currentText()
         if cadastre == '':
             return
         
-        # get the id of the selected portal
-        id = self.dlg.cboCadastre.itemData( self.dlg.cboCadastre.currentIndex() )
+        # get the id of the selected item
+        id = self.dlg.cboCadastre.itemData(self.dlg.cboCadastre.currentIndex())
         if not id:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
@@ -629,22 +669,30 @@ class SearchPlus(QObject):
         # get cursor on wich execute query
         cursor = self.connection.cursor()
 
-        # tab Toponyms
+        # tab Cadastre
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.CADASTRE_SCHEMA, self.CADASTRE_LAYER)
-        params = [id]
+        params = [id] 
         cursor.execute(sqlquery, params)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        wkt = records[0]
-        
-        # create geometry for returned WKT
-        geom = QgsGeometry.fromWkt(wkt)
-        if not geom:
-            message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+        row = cursor.fetchone()
+        if not row:  
             return
         
-        # display annotation with message at a specified position
-        self.displayAnnotation(geom, cadastre)
+        # select this feature in order to copy to memory layer        
+        aux = "id = "+str(id) 
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.INFO)        
+            return    
+        
+        # Get a featureIterator from an expression
+        # Build a list of feature Ids from the previous result       
+        # Select features with the ids obtained             
+        it = self.cadastreLayer.getFeatures(QgsFeatureRequest(expr))
+        ids = [i.id() for i in it]
+        self.cadastreLayer.setSelectedFeatures(ids)    
+                
+        # Copy selected features to memory layer          
+        self.cadastreMemLayer = self.copySelected(self.cadastreLayer, self.cadastreMemLayer, "Polygon")         
          
          
     def displayEquipment(self):
@@ -662,8 +710,8 @@ class SearchPlus(QObject):
         if equipment == '':
             return
         
-        # get the id of the selected portal
-        id = self.dlg.cboEquipment.itemData( self.dlg.cboEquipment.currentIndex() )
+        # get the id of the selected item
+        id = self.dlg.cboEquipment.itemData(self.dlg.cboEquipment.currentIndex())
         if not id:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
@@ -674,22 +722,34 @@ class SearchPlus(QObject):
         # get cursor on wich execute query
         cursor = self.connection.cursor()
 
-        # tab Toponyms
+        # tab Equipments
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)
         params = [id]
+        self.iface.messageBar().pushMessage(sqlquery + "--" + str(id), QgsMessageBar.INFO)              
         cursor.execute(sqlquery, params)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        wkt = records[0]
-        
-        # create geometry for returned WKT
-        geom = QgsGeometry.fromWkt(wkt)
-        if not geom:
-            message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+        row = cursor.fetchone()
+        if not row:  
             return
         
-        # display annotation with message at a specified position
-        self.displayAnnotation(geom, equipment)
+        # select this feature in order to copy to memory layer        
+        aux = "id = "+str(id) 
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.INFO)        
+            return    
+        
+        # Get a featureIterator from an expression
+        # Build a list of feature Ids from the previous result       
+        # Select features with the ids obtained             
+        it = self.equipmentLayer.getFeatures(QgsFeatureRequest(expr))
+        ids = [i.id() for i in it]
+        self.equipmentLayer.setSelectedFeatures(ids)
+        
+        # Copy selected features to memory layer          
+        self.equipmentMemLayer = self.copySelected(self.equipmentLayer, self.equipmentMemLayer, "Point")       
+
+        # Zoom to point layer
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
          
          
     def displayToponym(self):
@@ -699,12 +759,12 @@ class SearchPlus(QObject):
         if not self.connection:
             return
 
-        toponym = self.dlg.cboTopo.currentText()
+        toponym = self.dlg.cboTopo.currentText()   
         if toponym == '':
             return
         
-        # get the id of the selected portal
-        id = self.dlg.cboTopo.itemData( self.dlg.cboTopo.currentIndex() )
+        # get the id of the selected toponym
+        id = self.dlg.cboTopo.itemData(self.dlg.cboTopo.currentIndex())
         if not id:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
@@ -716,26 +776,34 @@ class SearchPlus(QObject):
         cursor = self.connection.cursor()
 
         # tab Toponyms
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)        
         params = [id]
         cursor.execute(sqlquery, params)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        wkt = records[0]
-        
-        # create geometry for returned WKT
-        geom = QgsGeometry.fromWkt(wkt)
-        if not geom:
-            message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+        row = cursor.fetchone()
+        if not row:   
             return
+
+        # select this feature in order to copy to memory layer        
+        aux = "id = "+str(id)         
+        expr = QgsExpression(aux)            
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.INFO)        
+            return    
         
-        # display annotation with message at a specified position
-        self.displayAnnotation(geom, toponym)
+        # Get a featureIterator from an expression
+        # Build a list of feature Ids from the previous result       
+        # Select features with the ids obtained       
+        it = self.placenameLayer.getFeatures(QgsFeatureRequest(expr))
+        ids = [i.id() for i in it]
+        self.placenameLayer.setSelectedFeatures(ids)    
+                
+        # Copy selected features to memory layer
+        self.placenameMemLayer = self.copySelected(self.placenameLayer, self.placenameMemLayer, "Linestring")
          
          
     def displayStreetData(self):
         ''' Show street data on the canvas when selected street and number in street tab
-        '''
+        '''          
         # preconditions
         if not self.connection:
             return
@@ -749,7 +817,7 @@ class SearchPlus(QObject):
             return
         
         # get the id of the selected portal
-        id = self.dlg.cboNumber.itemData( self.dlg.cboNumber.currentIndex() )
+        id = self.dlg.cboNumber.itemData(self.dlg.cboNumber.currentIndex())
         if not id:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
@@ -761,14 +829,15 @@ class SearchPlus(QObject):
         cursor = self.connection.cursor()
 
         # now get the list of indexes belonging to the current code
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s; '.format(self.STREET_SCHEMA, self.PORTAL_LAYER)
-        params = [id]
+        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s; '.format(self.PORTAL_SCHEMA, self.PORTAL_LAYER)    
+        params = [id]         
         cursor.execute(sqlquery, params)
-        records = [x[0] for x in cursor.fetchall() if x[0]] # remove None values
-        wkt = records[0]
+        row = cursor.fetchone()
+        if not row:        
+            return
         
-        # create geometry for returned WKT
-        geom = QgsGeometry.fromWkt(wkt)
+        # create geometry for returned WKT     
+        geom = QgsGeometry.fromWkt(row[0])     
         if not geom:
             message = self.tr('Can not correctly get geometry')
             self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
@@ -786,7 +855,7 @@ class SearchPlus(QObject):
         '''
         centroid = geom.centroid()
         
-        # clean previous annaotations:
+        # clean previous annotations:
         for annotation in self.annotations:
             try:
                 scene = annotation.scene()
@@ -820,6 +889,7 @@ class SearchPlus(QObject):
             # check if the plugin is active
             if not self.pluginName in active_plugins:
                 return
+            self.getLayers()
             self.getFullExtent()            
             self.dlg.show()
         
