@@ -92,7 +92,8 @@ class SearchPlus(QObject):
         self.annotations = []
         self.placenameMemLayer = None    
         self.cadastreMemLayer = None  
-        self.equipmentMemLayer = None          
+        self.equipmentMemLayer = None  
+        self.portalMemLayer = None   
         
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'SearchPlus')
@@ -151,7 +152,9 @@ class SearchPlus(QObject):
             if cur_layer.name() == self.CADASTRE_LAYER:
                 self.cadastreLayer = cur_layer   
             if cur_layer.name() == self.EQUIPMENT_LAYER:
-                self.equipmentLayer = cur_layer                     
+                self.equipmentLayer = cur_layer      
+            if cur_layer.name() == self.PORTAL_LAYER:
+                self.portalLayer = cur_layer                     
     
     
     def getFullExtent(self):
@@ -314,7 +317,7 @@ class SearchPlus(QObject):
         if not self.CONNECTION_NAME:
             confFileName = self.setting.fileName()
             message = self.tr('No default connection is configured in {}'.format(confFileName))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL, 5)
             return
         
         # look for connection data in QGIS configration
@@ -344,7 +347,7 @@ class SearchPlus(QObject):
             if not ok:
                 QgsCredentials.instance().unlock()
                 message = self.tr('Refused or Can not get credentials for realm: {} '.format(connInfo))
-                self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+                self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
                 return
             
             # unlock credentials... but not add to cache
@@ -359,7 +362,7 @@ class SearchPlus(QObject):
             self.connection = psycopg2.connect(self.uri.connectionInfo().encode('utf-8'))
         except Exception as ex:
             message = self.tr('Can not connect to connection named: {} for reason: {} '.format(self.CONNECTION_NAME, str(ex)))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL, 5)
             return
         else:
             # last credential were ok, so record them in the cache
@@ -469,7 +472,7 @@ class SearchPlus(QObject):
         geom = QgsGeometry.fromWkt(wkt)
         if not geom:
             message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
         
         # zoom on it's centroid
@@ -619,24 +622,24 @@ class SearchPlus(QObject):
         X = self.dlg.txtCoordX.text()
         if not X:
             message = "Coordinate X not specified"
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
         Y = self.dlg.txtCoordY.text()  
         if not Y:
             message = "Coordinate Y not specified"
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)           
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)           
             return
         
         # check if coordinates are within the interval
         valX = self.validateX()
         if not valX:
             message = "Coordinate X is out of the valid interval. It should be between "+str(self.xMinVal)+" and "+str(self.xMaxVal)
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
         valY = self.validateY()
         if not valY:
             message = "Coordinate Y is out of the valid interval, It should be between "+str(self.yMinVal)+" and "+str(self.yMaxVal)
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return            
             
         geom = QgsGeometry.fromPoint(QgsPoint(float(X), float(Y)))
@@ -663,7 +666,7 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(cadastre))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
 
         # get cursor on wich execute query
@@ -681,7 +684,7 @@ class SearchPlus(QObject):
         aux = "id = "+str(id) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.INFO)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -716,7 +719,7 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(equipment))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
 
         # get cursor on wich execute query
@@ -724,8 +727,7 @@ class SearchPlus(QObject):
 
         # tab Equipments
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)
-        params = [id]
-        self.iface.messageBar().pushMessage(sqlquery + "--" + str(id), QgsMessageBar.INFO)              
+        params = [id]           
         cursor.execute(sqlquery, params)
         row = cursor.fetchone()
         if not row:  
@@ -735,7 +737,7 @@ class SearchPlus(QObject):
         aux = "id = "+str(id) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.INFO)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -769,7 +771,7 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(toponym))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
 
         # get cursor on wich execute query
@@ -787,7 +789,7 @@ class SearchPlus(QObject):
         aux = "id = "+str(id)         
         expr = QgsExpression(aux)            
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.INFO)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -822,7 +824,7 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(civic))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 3)
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
 
         # get cursor on wich execute query
@@ -830,24 +832,31 @@ class SearchPlus(QObject):
 
         # now get the list of indexes belonging to the current code
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s; '.format(self.PORTAL_SCHEMA, self.PORTAL_LAYER)    
-        params = [id]         
+        params = [id]     
         cursor.execute(sqlquery, params)
         row = cursor.fetchone()
-        if not row:        
+        if not row:  
             return
         
-        # create geometry for returned WKT     
-        geom = QgsGeometry.fromWkt(row[0])     
-        if not geom:
-            message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL)
-            return
+        # select this feature in order to copy to memory layer        
+        aux = "id = "+str(id) 
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
+            return    
         
-        # create message to show
-        message = street + ', '+civic
+        # Get a featureIterator from an expression
+        # Build a list of feature Ids from the previous result       
+        # Select featureswith the ids obtained             
+        it = self.portalLayer.getFeatures(QgsFeatureRequest(expr))
+        ids = [i.id() for i in it]
+        self.portalLayer.setSelectedFeatures(ids)
         
-        # display annotation with message at a specified position
-        self.displayAnnotation(geom, message)
+        # Copy selected features to memory layer          
+        self.portalMemLayer = self.copySelected(self.portalLayer, self.portalMemLayer, "Point")       
+
+        # Zoom to point layer
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
         
         
     def displayAnnotation(self, geom, message):
