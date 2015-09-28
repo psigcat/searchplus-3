@@ -141,17 +141,22 @@ class SearchPlus(QObject):
         
         # Iterate over all layers to get the ones set in config file
         layers = self.iface.legendInterface().layers()
-        for cur_layer in layers:      
-            if cur_layer.name() == self.STREET_LAYER:
-                self.streetLayer = cur_layer
-            if cur_layer.name() == self.PLACENAME_LAYER:
-                self.placenameLayer = cur_layer     
-            if cur_layer.name() == self.CADASTRE_LAYER:
-                self.cadastreLayer = cur_layer   
-            if cur_layer.name() == self.EQUIPMENT_LAYER:
-                self.equipmentLayer = cur_layer      
-            if cur_layer.name() == self.PORTAL_LAYER:
-                self.portalLayer = cur_layer                     
+        for cur_layer in layers:     
+            uri = cur_layer.dataProvider().dataSourceUri()   
+            pos_ini = uri.find("table=")
+            pos_fi = uri.find("(geom)")  
+            if pos_ini <> -1 and pos_fi <> -1:
+                uri_table = uri[pos_ini:pos_fi]            
+                if self.STREET_LAYER in uri_table:
+                    self.streetLayer = cur_layer
+                if self.PLACENAME_LAYER in uri_table:
+                    self.placenameLayer = cur_layer     
+                if self.CADASTRE_LAYER in uri_table:
+                    self.cadastreLayer = cur_layer   
+                if self.EQUIPMENT_LAYER in uri_table:                
+                    self.equipmentLayer = cur_layer  
+                if self.PORTAL_LAYER in uri_table:
+                    self.portalLayer = cur_layer                     
     
     
     def getFullExtent(self):
