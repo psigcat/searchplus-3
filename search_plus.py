@@ -65,22 +65,19 @@ class SearchPlus(QObject):
         self.pluginName = os.path.basename(self.plugin_dir)
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'SearchPlus_{}.qm'.format(locale))
+        locale_path = os.path.join(self.plugin_dir, 'i18n', 'SearchPlus_{}.qm'.format(locale))
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
-
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
         
         # load local settings of the plugin
         settingFile = os.path.join(self.plugin_dir, 'config', 'searchplus.config')
         self.settings = QSettings(settingFile, QSettings.IniFormat)
-        self.settings.setIniCodec( sys.stdout.encoding )
+        self.settings.setIniCodec(sys.stdout.encoding)
+        self.stylesFolder = self.plugin_dir+"/styles/"
         
         # load plugin settings
         self.loadPluginSettings()      
@@ -574,10 +571,7 @@ class SearchPlus(QObject):
         # Create memory layer if not already set
         if mem_layer is None: 
             uri = geom_type+"?crs=epsg:25831" 
-            mem_layer = QgsVectorLayer(uri, "selected_"+layer.name(), "memory")            
-
-            # TODO: Load style
-            #mem_layer.loadNamedStyle(self.path_qml)            
+            mem_layer = QgsVectorLayer(uri, "selected_"+layer.name(), "memory")                     
          
             # Copy attributes from main layer to memory layer
             attrib_names = layer.dataProvider().fields()
@@ -614,6 +608,13 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().zoomToSelected(layer)
         
         return mem_layer
+        
+        
+    def loadStyle(self, layer, qml):
+    
+        path_qml = self.stylesFolder+qml      
+        if os.path.exists(path_qml): 
+            layer.loadNamedStyle(path_qml)          
 
         
     def displayUTM(self):
@@ -697,6 +698,9 @@ class SearchPlus(QObject):
         # Copy selected features to memory layer          
         self.cadastreMemLayer = self.copySelected(self.cadastreLayer, self.cadastreMemLayer, "Polygon")         
          
+        # Load style
+        self.loadStyle(self.cadastreMemLayer, "cadastre.qml")  
+        
          
     def displayEquipment(self):
         ''' Show equipment data on the canvas when selected it in the relative tab
@@ -752,6 +756,9 @@ class SearchPlus(QObject):
 
         # Zoom to point layer
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
+        
+        # Load style
+        self.loadStyle(self.equipmentMemLayer, "equipment.qml")          
          
          
     def displayToponym(self):
@@ -801,6 +808,9 @@ class SearchPlus(QObject):
                 
         # Copy selected features to memory layer
         self.placenameMemLayer = self.copySelected(self.placenameLayer, self.placenameMemLayer, "Linestring")
+        
+        # Load style
+        self.loadStyle(self.placenameMemLayer, "toponym.qml")        
          
          
     def displayStreetData(self):
@@ -857,6 +867,9 @@ class SearchPlus(QObject):
 
         # Zoom to point layer
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
+        
+        # Load style
+        self.loadStyle(self.portalMemLayer, "portal.qml")         
         
         
     def displayAnnotation(self, geom, message):
