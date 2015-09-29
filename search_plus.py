@@ -108,6 +108,11 @@ class SearchPlus(QObject):
         '''                   
         # get db credentials
         self.CONNECTION_NAME = self.settings.value('db/CONNECTION_NAME', '')
+        self.CONNECTION_HOST = self.settings.value('db/CONNECTION_HOST', '')
+        self.CONNECTION_PORT = self.settings.value('db/CONNECTION_PORT', '5432')        
+        self.CONNECTION_DB = self.settings.value('db/CONNECTION_DB', '')
+        self.CONNECTION_USER = self.settings.value('db/CONNECTION_USER', '')
+        self.CONNECTION_PWD = self.settings.value('db/CONNECTION_PWD', '')        
 
         # get all db configuration table/columns to load to populate the GUI
         self.STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
@@ -315,37 +320,37 @@ class SearchPlus(QObject):
         except:
             pass
         
-        # get default configured connection name
-        if not self.CONNECTION_NAME:
-            confFileName = self.setting.fileName()
-            message = self.tr('No default connection is configured in {}'.format(confFileName))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL, 5)
-            return
-        
-        # look for connection data in QGIS configration
-        # get connection data
-        qgisSettings = QSettings()
-        
-        root = "/PostgreSQL/connections/"+self.CONNECTION_NAME+"/"
-        DATABASE_HOST = qgisSettings.value(root+"host", '')
-        DATABASE_NAME = qgisSettings.value(root+"database", '')
-        DATABASE_PORT = qgisSettings.value(root+"port", '')
-        DATABASE_USER = qgisSettings.value(root+"username", '')
-        DATABASE_PWD = qgisSettings.value(root+"password", '')
-        SSL_MODE = qgisSettings.value(root+"sslmode", QgsDataSourceURI.SSLdisable)
+        # get connection name (only if set in configuration file)    
+        SSL_MODE = 0        
+        if self.CONNECTION_NAME != '':
+            # look for connection data in QGIS configuration (if exists)
+            qgisSettings = QSettings()     
+            root_conn = "/PostgreSQL/connections/"          
+            qgisSettings.beginGroup(root_conn);           
+            groups = qgisSettings.childGroups();                                
+            if self.CONNECTION_NAME in groups:      
+                root = self.CONNECTION_NAME+"/"  
+                self.CONNECTION_HOST = qgisSettings.value(root+"host", '')
+                self.CONNECTION_PORT = qgisSettings.value(root+"port", '')            
+                self.CONNECTION_DB = qgisSettings.value(root+"database", '')
+                self.CONNECTION_USER = qgisSettings.value(root+"username", '')
+                self.CONNECTION_PWD = qgisSettings.value(root+"password", '')             
+                SSL_MODE = qgisSettings.value(root+"sslmode", QgsDataSourceURI.SSLdisable) 
+            #else:
+                #self.iface.messageBar().pushMessage("Connection name '"+self.CONNECTION_NAME+"' not found.Please fix it or leave it empty", QgsMessageBar.WARNING, 5)
         
         # get realm of the connection (realm don't have use ry pwd)
         # realm is the connectioInfo from QgsDataSourceURI
         self.uri = QgsDataSourceURI()
-        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, '',  '', int(SSL_MODE))
+        self.uri.setConnection(self.CONNECTION_HOST, self.CONNECTION_PORT, self.CONNECTION_DB, '',  '', int(SSL_MODE))
         connInfo = self.uri.connectionInfo()
         
         # get credentials if at least there's no PWD
-        if not DATABASE_PWD:
+        if not self.CONNECTION_PWD:
             # get credentials and mutate cache => need lock
             QgsCredentials.instance().lock()
     
-            (ok, DATABASE_USER, DATABASE_PWD) = QgsCredentials.instance().get(connInfo, DATABASE_USER, DATABASE_PWD)
+            (ok, self.CONNECTION_USER, self.CONNECTION_PWD) = QgsCredentials.instance().get(connInfo, self.CONNECTION_USER, self.CONNECTION_PWD)
             if not ok:
                 QgsCredentials.instance().unlock()
                 message = self.tr('Refused or Can not get credentials for realm: {} '.format(connInfo))
@@ -357,19 +362,19 @@ class SearchPlus(QObject):
             QgsCredentials.instance().unlock()
         
         # add user and password if not set in the previous setConnection 
-        self.uri.setConnection(DATABASE_HOST, DATABASE_PORT, DATABASE_NAME, DATABASE_USER, DATABASE_PWD, int(SSL_MODE))
+        self.uri.setConnection(self.CONNECTION_HOST, self.CONNECTION_PORT, self.CONNECTION_DB, self.CONNECTION_USER, self.CONNECTION_PWD, int(SSL_MODE))
         
         # connect          
         try:
             self.connection = psycopg2.connect(self.uri.connectionInfo().encode('utf-8'))
         except Exception as ex:
-            message = self.tr('Can not connect to connection named: {} for reason: {} '.format(self.CONNECTION_NAME, str(ex)))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL, 5)
+            message = self.tr("Can not connect to database '{}' for reason: {} ".format(self.CONNECTION_DB, str(ex)))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL, 5)          
             return
         else:
             # last credential were ok, so record them in the cache
             QgsCredentials.instance().lock()
-            QgsCredentials.instance().put(connInfo, DATABASE_USER, DATABASE_PWD)
+            QgsCredentials.instance().put(connInfo, self.CONNECTION_USER, self.CONNECTION_PWD)
             QgsCredentials.instance().unlock()
                    
         # emit signal that connection is established
