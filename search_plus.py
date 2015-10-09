@@ -23,7 +23,7 @@ from __future__ import unicode_literals, division, print_function
 
 from qgis.utils import active_plugins
 from qgis.gui import QgsMessageBar, QgsTextAnnotationItem
-from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsLogger, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField
+from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsLogger, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField, QgsProject, QgsLayerTreeLayer
 from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
 from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
 
@@ -593,7 +593,12 @@ class SearchPlus(QObject):
                     newattributeList.append(QgsField(attrib.name(), attrib.type()))
             mem_layer.dataProvider().addAttributes(newattributeList)
             mem_layer.updateFields()
-            QgsMapLayerRegistry.instance().addMapLayer(mem_layer)   
+            
+            # Insert layer in the top of the TOC           
+            root = QgsProject.instance().layerTreeRoot()           
+            QgsMapLayerRegistry.instance().addMapLayer(mem_layer, False)
+            node_layer = QgsLayerTreeLayer(mem_layer)
+            root.insertChildNode(0, node_layer)                 
      
         # Prepare memory layer for editing
         mem_layer.startEditing()
@@ -617,6 +622,9 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().refresh() 
         self.iface.mapCanvas().zoomToSelected(layer)
         
+        # Make sure layer is always visible 
+        self.iface.legendInterface().setLayerVisible(mem_layer, True)
+                    
         return mem_layer
         
         
