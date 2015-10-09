@@ -575,7 +575,7 @@ class SearchPlus(QObject):
             layer.commitChanges()            
 
             
-    # Copy from Arbres to memory layer
+    # Copy from selected layer to memory layer
     def copySelected(self, layer, mem_layer, geom_type):
             
         # Create memory layer if not already set
@@ -710,6 +710,9 @@ class SearchPlus(QObject):
          
         # Load style
         self.loadStyle(self.cadastreMemLayer, "cadastre.qml")  
+
+        # Zoom to scale
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))             
         
          
     def displayEquipment(self):
@@ -769,6 +772,9 @@ class SearchPlus(QObject):
         
         # Load style
         self.loadStyle(self.equipmentMemLayer, "equipment.qml")          
+
+        # Zoom to scale
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))        
          
          
     def displayToponym(self):
@@ -821,6 +827,9 @@ class SearchPlus(QObject):
         
         # Load style
         self.loadStyle(self.placenameMemLayer, "toponym.qml")        
+        
+        # Zoom to scale
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))        
          
          
     def displayStreetData(self):
