@@ -583,18 +583,32 @@ class SearchPlus(QObject):
             return False      
             
     
-    def deleteFeatures(self, layer):
+    def manageMemLayer(self, layer):
     
         if layer is not None:
+            layer.startEditing()        
             it = layer.getFeatures()
             ids = [i.id() for i in it]
             layer.dataProvider().deleteFeatures(ids)    
-            layer.commitChanges()            
+            layer.commitChanges()     
+            self.iface.legendInterface().setLayerVisible(layer, False)
 
-            
+
+    def manageMemLayers(self):
+        
+        self.manageMemLayer(self.placenameMemLayer)
+        self.manageMemLayer(self.cadastreMemLayer)
+        self.manageMemLayer(self.equipmentMemLayer)
+        self.manageMemLayer(self.portalMemLayer)
+      
+    
     # Copy from selected layer to memory layer
     def copySelected(self, layer, mem_layer, geom_type):
             
+        # Delete previous features from all memory layers
+        # Make layer not visible
+        self.manageMemLayers()
+        
         # Create memory layer if not already set
         if mem_layer is None: 
             uri = geom_type+"?crs=epsg:25831" 
@@ -619,9 +633,6 @@ class SearchPlus(QObject):
      
         # Prepare memory layer for editing
         mem_layer.startEditing()
-
-        # Delete previous features
-        self.deleteFeatures(mem_layer)
         
         # Iterate over selected features   
         cfeatures = []
