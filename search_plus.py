@@ -87,12 +87,17 @@ class SearchPlus(QObject):
         self.menu = self.tr(u'&searchplus')
         self.connection = None
         self.annotations = []
+        self.streetLayer = None   
+        self.placenameLayer = None    
+        self.cadastreLayer = None  
+        self.equipmentLayer = None  
+        self.portalLayer = None           
         self.placenameMemLayer = None    
         self.cadastreMemLayer = None  
         self.equipmentMemLayer = None  
         self.portalMemLayer = None   
         
-        # TODO: We are going to let the user set this up in a future iteration
+        # Set toolbar
         self.toolbar = self.iface.addToolBar(u'SearchPlus')
         self.toolbar.setObjectName(u'SearchPlus')
         
@@ -141,10 +146,16 @@ class SearchPlus(QObject):
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
         
-        
+
+    def initialization(self):
+    
+        self.getLayers()
+        self.getFullExtent() 
+            
+            
     def getLayers(self): 
         
-        # Iterate over all layers to get the ones set in config file
+        # Iterate over all layers to get the ones set in config file   
         layers = self.iface.legendInterface().layers()
         for cur_layer in layers:     
             uri = cur_layer.dataProvider().dataSourceUri()   
@@ -158,7 +169,7 @@ class SearchPlus(QObject):
                     self.placenameLayer = cur_layer     
                 if self.CADASTRE_LAYER in uri_table:
                     self.cadastreLayer = cur_layer   
-                if self.EQUIPMENT_LAYER in uri_table:                
+                if self.EQUIPMENT_LAYER in uri_table:  
                     self.equipmentLayer = cur_layer  
                 if self.PORTAL_LAYER in uri_table:
                     self.portalLayer = cur_layer                     
@@ -183,11 +194,14 @@ class SearchPlus(QObject):
         self.xMinVal = int(self.xMin - self.xOffset)
         self.xMaxVal = int(self.xMax + self.xOffset)
         self.yMinVal = int(self.yMin - self.yOffset)
-        self.yMaxVal = int(self.yMax + self.yOffset)             
-        self.intValidatorX = QIntValidator(self.xMinVal, self.xMaxVal, self.dlg) # assumed that E and W are inserted as - +
-        self.intValidatorY = QIntValidator(self.yMinVal, self.yMaxVal, self.dlg) # assumed that S and N are inserted as - +
-        self.dlg.txtCoordX.setValidator(self.intValidatorX)
-        self.dlg.txtCoordY.setValidator(self.intValidatorY)            
+        self.yMaxVal = int(self.yMax + self.yOffset)  
+        try:
+            self.intValidatorX = QIntValidator(self.xMinVal, self.xMaxVal, self.dlg) # assumed that E and W are inserted as - +
+            self.intValidatorY = QIntValidator(self.yMinVal, self.yMaxVal, self.dlg) # assumed that S and N are inserted as - +
+            self.dlg.txtCoordX.setValidator(self.intValidatorX)
+            self.dlg.txtCoordY.setValidator(self.intValidatorY)            
+        except:
+            pass  
             
             
     # noinspection PyMethodMayBeStatic
@@ -461,7 +475,10 @@ class SearchPlus(QObject):
                 self.dlg.cboStreet.addItem(record[1], record)
             self.dlg.cboStreet.blockSignals(False)
         else:
-            self.dlg.searchPlusTabMain.removeTab(0)          
+            self.dlg.searchPlusTabMain.removeTab(0)     
+
+        # Get layers and full extent
+        self.initialization()   
     
     
     def zoomOnStreet(self):
@@ -678,6 +695,9 @@ class SearchPlus(QObject):
         cadastre = self.dlg.cboCadastre.currentText()
         if cadastre == '':
             return
+            
+        if self.cadastreLayer is None:
+            self.initialization()                
         
         # get the id of the selected item
         id = self.dlg.cboCadastre.itemData(self.dlg.cboCadastre.currentIndex())
@@ -737,6 +757,9 @@ class SearchPlus(QObject):
         equipment = self.dlg.cboEquipment.currentText()
         if equipment == '':
             return
+            
+        if self.equipmentLayer is None:
+            self.initialization()      
         
         # get the id of the selected item
         id = self.dlg.cboEquipment.itemData(self.dlg.cboEquipment.currentIndex())
@@ -795,6 +818,9 @@ class SearchPlus(QObject):
         toponym = self.dlg.cboTopo.currentText()   
         if toponym == '':
             return
+            
+        if self.placenameLayer is None:
+            self.initialization()
         
         # get the id of the selected toponym
         id = self.dlg.cboTopo.itemData(self.dlg.cboTopo.currentIndex())
@@ -854,6 +880,9 @@ class SearchPlus(QObject):
         civic = self.dlg.cboNumber.currentText()
         if civic == '':
             return
+            
+        if self.portalLayer is None:
+            self.initialization()            
         
         # get the id of the selected portal
         id = self.dlg.cboNumber.itemData(self.dlg.cboNumber.currentIndex())
@@ -938,8 +967,7 @@ class SearchPlus(QObject):
             # check if the plugin is active
             if not self.pluginName in active_plugins:
                 return
-            self.getLayers()
-            self.getFullExtent()            
+            self.initialization()       
             self.dlg.show()
         
         # if not, setup connection               
