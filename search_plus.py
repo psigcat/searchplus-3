@@ -21,6 +21,11 @@
 # 2To3 python compatibility
 from __future__ import unicode_literals, division, print_function
 
+import os.path
+import sys
+reload(sys)  
+sys.setdefaultencoding('utf8')
+
 from qgis.utils import active_plugins
 from qgis.gui import QgsMessageBar, QgsTextAnnotationItem
 from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsLogger, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField, QgsProject, QgsLayerTreeLayer
@@ -31,16 +36,11 @@ from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidato
 import psycopg2
 import psycopg2.extensions
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)# Initialize Qt resources from file resources.py
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY) # Initialize Qt resources from file resources.py
 import resources_rc
 
 # Import the code for the dialog
 from search_plus_dockwidget import SearchPlusDockWidget
-import os.path
-
-import sys  
-reload(sys)  
-sys.setdefaultencoding('utf8')
 
 
 class SearchPlus(QObject):
@@ -97,10 +97,6 @@ class SearchPlus(QObject):
         self.equipmentMemLayer = None  
         self.portalMemLayer = None   
         
-        # Set toolbar
-        self.toolbar = self.iface.addToolBar(u'SearchPlus')
-        self.toolbar.setObjectName(u'SearchPlus')
-        
         # establish connection when all is completly running 
         self.iface.initializationCompleted.connect(self.initConnection)
         
@@ -145,6 +141,12 @@ class SearchPlus(QObject):
         
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
+        
+        # Create own toolbar
+        self.pluginToolbarEnabled = bool(int(self.settings.value('status/pluginToolbarEnabled', 1)))
+        if self.pluginToolbarEnabled:
+            self.toolbar = self.iface.addToolBar(u'SearchPlus')
+            self.toolbar.setObjectName(u'SearchPlus')        
         
 
     def initialization(self):
@@ -273,6 +275,8 @@ class SearchPlus(QObject):
 
         if add_to_toolbar:
             self.toolbar.addAction(action)
+        else:
+            self.iface.addToolBarIcon(action)            
 
         if add_to_menu:
             self.iface.addPluginToMenu(self.menu, action)
@@ -286,7 +290,7 @@ class SearchPlus(QObject):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         icon_path = ':/plugins/SearchPlus/icon_searchplus.png'
-        self.add_action(icon_path, text=self.tr(u'Cercador avançat'), callback=self.run, parent=self.iface.mainWindow())
+        self.add_action(icon_path, self.tr(u'Cercador avançat'), self.run, parent=self.iface.mainWindow(), add_to_menu=True, add_to_toolbar=self.pluginToolbarEnabled)
 
         # Create the dock widget and dock it but hide it waiting the ond of qgis loading
         self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
@@ -312,8 +316,9 @@ class SearchPlus(QObject):
         for action in self.actions:
             self.iface.removePluginMenu(self.tr(u'&searchplus'), action)
             self.iface.removeToolBarIcon(action)
-        # remove the toolbar
-        del self.toolbar
+        
+        if self.pluginToolbarEnabled:
+            del self.toolbar
         
         if self.dlg:
             self.dlg.deleteLater()
@@ -400,7 +405,7 @@ class SearchPlus(QObject):
         exists = True
         sql = "SELECT * FROM pg_tables WHERE schemaname = '"+schemaName+"' AND tablename = '"+tableName+"'"
         cursor = self.connection.cursor()        
-        rowcount = cursor.execute(sql)         
+        cursor.execute(sql)         
         if cursor.rowcount == 0:      
             exists = False
         return exists       
@@ -711,8 +716,8 @@ class SearchPlus(QObject):
             self.initialization()                
         
         # get the id of the selected item
-        id = self.dlg.cboCadastre.itemData(self.dlg.cboCadastre.currentIndex())
-        if not id:
+        selId = self.dlg.cboCadastre.itemData(self.dlg.cboCadastre.currentIndex())
+        if not selId:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(cadastre))
@@ -724,7 +729,7 @@ class SearchPlus(QObject):
 
         # tab Cadastre
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.CADASTRE_SCHEMA, self.CADASTRE_LAYER)
-        params = [id] 
+        params = [selId] 
         cursor.execute(sqlquery, params)
         row = cursor.fetchone()
         if not row:  
@@ -773,8 +778,8 @@ class SearchPlus(QObject):
             self.initialization()      
         
         # get the id of the selected item
-        id = self.dlg.cboEquipment.itemData(self.dlg.cboEquipment.currentIndex())
-        if not id:
+        selId = self.dlg.cboEquipment.itemData(self.dlg.cboEquipment.currentIndex())
+        if not selId:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(equipment))
@@ -786,7 +791,7 @@ class SearchPlus(QObject):
 
         # tab Equipments
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)
-        params = [id]           
+        params = [selId]           
         cursor.execute(sqlquery, params)
         row = cursor.fetchone()
         if not row:  
@@ -834,8 +839,8 @@ class SearchPlus(QObject):
             self.initialization()
         
         # get the id of the selected toponym
-        id = self.dlg.cboTopo.itemData(self.dlg.cboTopo.currentIndex())
-        if not id:
+        selId = self.dlg.cboTopo.itemData(self.dlg.cboTopo.currentIndex())
+        if not selId:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(toponym))
@@ -847,7 +852,7 @@ class SearchPlus(QObject):
 
         # tab Toponyms
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)        
-        params = [id]
+        params = [selId]
         cursor.execute(sqlquery, params)
         row = cursor.fetchone()
         if not row:   
@@ -896,8 +901,8 @@ class SearchPlus(QObject):
             self.initialization()            
         
         # get the id of the selected portal
-        id = self.dlg.cboNumber.itemData(self.dlg.cboNumber.currentIndex())
-        if not id:
+        selId = self.dlg.cboNumber.itemData(self.dlg.cboNumber.currentIndex())
+        if not selId:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(civic))
@@ -909,7 +914,7 @@ class SearchPlus(QObject):
 
         # now get the list of indexes belonging to the current code
         sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s; '.format(self.PORTAL_SCHEMA, self.PORTAL_LAYER)    
-        params = [id]     
+        params = [selId]     
         cursor.execute(sqlquery, params)
         row = cursor.fetchone()
         if not row:  
