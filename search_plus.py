@@ -21,15 +21,13 @@
 # 2To3 python compatibility
 from __future__ import unicode_literals, division, print_function
 
+import operator
 import os.path
-import sys
-reload(sys)  
-sys.setdefaultencoding('utf8')
 
 from qgis.utils import active_plugins
 from qgis.gui import QgsMessageBar, QgsTextAnnotationItem
 from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsLogger, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField, QgsProject, QgsLayerTreeLayer
-from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
+from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal, QPyNullVariant
 from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
 
 # PostGIS import
@@ -37,9 +35,9 @@ import psycopg2
 import psycopg2.extensions
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
 psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY) # Initialize Qt resources from file resources.py
-import resources_rc
 
-# Import the code for the dialog
+import resources_rc
+from utils import *  # @UnusedWildImport
 from search_plus_dockwidget import SearchPlusDockWidget
 
 
@@ -55,7 +53,7 @@ class SearchPlus(QObject):
             which provides the hook by which you can manipulate the QGIS
             application at run time.
         :type iface: QgsInterface
-        """
+        """           
         super(SearchPlus, self).__init__()
         
         # Save reference to the QGIS interface
@@ -71,20 +69,23 @@ class SearchPlus(QObject):
             self.translator = QTranslator()
             self.translator.load(locale_path)
             if qVersion() > '4.3.3':
-                QCoreApplication.installTranslator(self.translator)
+                QCoreApplication.installTranslator(self.translator)         
         
         # load local settings of the plugin
-        settingFile = os.path.join(self.plugin_dir, 'config', 'searchplus.config')
-        self.settings = QSettings(settingFile, QSettings.IniFormat)
-        self.settings.setIniCodec(sys.stdout.encoding)
+        setting_file = os.path.join(self.plugin_dir, 'config', self.app_name+'.config')
+        if not os.path.isfile(setting_file):
+            message = "Config file not found at: "+setting_file            
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)            
+            return False        
+        self.settings = QSettings(setting_file, QSettings.IniFormat)
         self.stylesFolder = self.plugin_dir+"/styles/"
-        
+            
         # load plugin settings
         self.loadPluginSettings()      
         
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&searchplus')
+        self.menu = self.tr(self.app_name)
         self.connection = None
         self.annotations = []
         self.streetLayer = None   
@@ -99,14 +100,14 @@ class SearchPlus(QObject):
         
         # establish connection when all is completly running 
         self.iface.initializationCompleted.connect(self.initConnection)
-        
+         
         # when connection is established, then set all GUI values
-        self.connectionEstablished.connect(self.populateGui)    
+        self.connectionEstablished.connect(self.populateGui)   
     
     
     def loadPluginSettings(self):
         ''' Load plugin settings
-        '''                   
+        '''           
         # get db credentials
         self.CONNECTION_NAME = self.settings.value('db/CONNECTION_NAME', '')
         self.CONNECTION_HOST = self.settings.value('db/CONNECTION_HOST', '')
@@ -116,33 +117,29 @@ class SearchPlus(QObject):
         self.CONNECTION_PWD = self.settings.value('db/CONNECTION_PWD', '')        
 
         # get all db configuration table/columns to load to populate the GUI
-        self.STREET_SCHEMA= self.settings.value('db/STREET_SCHEMA', '')
-        self.STREET_LAYER= self.settings.value('db/STREET_LAYER', '')
-        self.STREET_FIELD_CODE= self.settings.value('db/STREET_FIELD_CODE', '')
-        self.STREET_FIELD_NAME= self.settings.value('db/STREET_FIELD_NAME', '')
+        self.STREET_LAYER= self.settings.value('db/STREET_LAYER', '').lower()
+        self.STREET_FIELD_CODE= self.settings.value('db/STREET_FIELD_CODE', '').lower()
+        self.STREET_FIELD_NAME= self.settings.value('db/STREET_FIELD_NAME', '').lower()
         
-        self.PORTAL_SCHEMA= self.settings.value('db/PORTAL_SCHEMA', '')
-        self.PORTAL_LAYER= self.settings.value('db/PORTAL_LAYER', '')
-        self.PORTAL_FIELD_CODE= self.settings.value('db/PORTAL_FIELD_CODE', '')
-        self.PORTAL_FIELD_NUMBER= self.settings.value('db/PORTAL_FIELD_NUMBER', '')
+        self.PORTAL_LAYER= self.settings.value('db/PORTAL_LAYER', '').lower()
+        self.PORTAL_FIELD_CODE= self.settings.value('db/PORTAL_FIELD_CODE', '').lower()
+        self.PORTAL_FIELD_NUMBER= self.settings.value('db/PORTAL_FIELD_NUMBER', '').lower()
         
-        self.PLACENAME_SCHEMA= self.settings.value('db/PLACENAME_SCHEMA', '')
-        self.PLACENAME_LAYER= self.settings.value('db/PLACENAME_LAYER', '')
-        self.PLACENAME_FIELD= self.settings.value('db/PLACENAME_FIELD', '')
+        self.PLACENAME_LAYER= self.settings.value('db/PLACENAME_LAYER', '').lower()
+        self.PLACENAME_FIELD= self.settings.value('db/PLACENAME_FIELD', '').lower()
         
-        self.EQUIPMENT_SCHEMA= self.settings.value('db/EQUIPMENT_SCHEMA', '')
-        self.EQUIPMENT_LAYER= self.settings.value('db/EQUIPMENT_LAYER', '')
-        self.EQUIPMENT_FIELD_TYPE= self.settings.value('db/EQUIPMENT_FIELD_TYPE', '')
-        self.EQUIPMENT_FIELD_NAME= self.settings.value('db/EQUIPMENT_FIELD_NAME', '')
+        self.EQUIPMENT_SCHEMA= self.settings.value('db/EQUIPMENT_SCHEMA', '').lower()
+        self.EQUIPMENT_LAYER= self.settings.value('db/EQUIPMENT_LAYER', '').lower()
+        self.EQUIPMENT_FIELD_TYPE= self.settings.value('db/EQUIPMENT_FIELD_TYPE', '').lower()
+        self.EQUIPMENT_FIELD_NAME= self.settings.value('db/EQUIPMENT_FIELD_NAME', '').lower()
         
-        self.CADASTRE_SCHEMA= self.settings.value('db/CADASTRE_SCHEMA', '')
-        self.CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '')
-        self.CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '')
+        self.CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '').lower()
+        self.CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '').lower()
         
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
         
-        # Create own toolbar
+        # Create own plugin toolbar or not?
         self.pluginToolbarEnabled = bool(int(self.settings.value('status/pluginToolbarEnabled', 1)))
         if self.pluginToolbarEnabled:
             self.toolbar = self.iface.addToolBar(u'SearchPlus')
@@ -160,22 +157,23 @@ class SearchPlus(QObject):
         # Iterate over all layers to get the ones set in config file   
         layers = self.iface.legendInterface().layers()
         for cur_layer in layers:     
-            uri = cur_layer.dataProvider().dataSourceUri()   
+            uri = cur_layer.dataProvider().dataSourceUri().lower()   
             pos_ini = uri.find("table=")
             pos_fi = uri.find("(geom)")  
+            uri_table = uri
             if pos_ini <> -1 and pos_fi <> -1:
                 uri_table = uri[pos_ini:pos_fi]            
-                if self.STREET_LAYER in uri_table:
-                    self.streetLayer = cur_layer
-                if self.PLACENAME_LAYER in uri_table:
-                    self.placenameLayer = cur_layer     
-                if self.CADASTRE_LAYER in uri_table:
-                    self.cadastreLayer = cur_layer   
-                if self.EQUIPMENT_LAYER in uri_table:  
-                    self.equipmentLayer = cur_layer  
-                if self.PORTAL_LAYER in uri_table:
-                    self.portalLayer = cur_layer                     
-    
+            if self.STREET_LAYER in uri_table:
+                self.streetLayer = cur_layer
+            if self.PLACENAME_LAYER in uri_table:
+                self.placenameLayer = cur_layer     
+            if self.CADASTRE_LAYER in uri_table:
+                self.cadastreLayer = cur_layer   
+            if self.EQUIPMENT_LAYER in uri_table:  
+                self.equipmentLayer = cur_layer  
+            if self.PORTAL_LAYER in uri_table:
+                self.portalLayer = cur_layer       
+                                
     
     def getFullExtent(self):
                
@@ -290,7 +288,7 @@ class SearchPlus(QObject):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         icon_path = ':/plugins/SearchPlus/icon_searchplus.png'
-        self.add_action(icon_path, self.tr(u'Cercador avançat'), self.run, parent=self.iface.mainWindow(), add_to_menu=True, add_to_toolbar=self.pluginToolbarEnabled)
+        self.add_action(icon_path, self.tr('Advanced searcher'), self.run, parent=self.iface.mainWindow(), add_to_toolbar=self.pluginToolbarEnabled)
 
         # Create the dock widget and dock it but hide it waiting the ond of qgis loading
         self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
@@ -298,9 +296,9 @@ class SearchPlus(QObject):
         self.dlg.setVisible(False)
         
         # add first level combo box events
-        self.dlg.cboStreet.currentIndexChanged.connect(self.resetNumbers)
+        self.dlg.cboStreet.currentIndexChanged.connect(self.getStreetNumbers)
         self.dlg.cboStreet.currentIndexChanged.connect(self.zoomOnStreet)
-        self.dlg.cboType.currentIndexChanged.connect(self.resetEquipments)
+        self.dlg.cboType.currentIndexChanged.connect(self.getEquipments)
         
         # add events to show information o the canvas
         self.dlg.cboNumber.currentIndexChanged.connect(self.displayStreetData)
@@ -314,7 +312,7 @@ class SearchPlus(QObject):
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginMenu(self.tr(u'&searchplus'), action)
+            self.iface.removePluginMenu(self.tr(self.app_name), action)
             self.iface.removeToolBarIcon(action)
         
         if self.pluginToolbarEnabled:
@@ -323,8 +321,8 @@ class SearchPlus(QObject):
         if self.dlg:
             self.dlg.deleteLater()
             del self.dlg
-
             
+             
     def initConnection(self):
         ''' Establish connection with the default credentials
         Connection name is get from QGIS connection. Will be used the connection
@@ -398,94 +396,151 @@ class SearchPlus(QObject):
                    
         # emit signal that connection is established
         self.connectionEstablished.emit()
-    
-    
-    def checkTable(self, schemaName, tableName):
         
-        exists = True
-        sql = "SELECT * FROM pg_tables WHERE schemaname = '"+schemaName+"' AND tablename = '"+tableName+"'"
-        cursor = self.connection.cursor()        
-        cursor.execute(sql)         
-        if cursor.rowcount == 0:      
-            exists = False
-        return exists       
-        
-    
+                     
     def populateGui(self):
         ''' Populate the interface with values get from DB
-        '''    
-        if not self.connection:
-            return
-            
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
+        '''                          
+        # tab Cadastre
+        self.populateCadastre()
         
-        # tab cadastre
-        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.CADASTRE_FIELD_CODE, self.CADASTRE_SCHEMA, self.CADASTRE_LAYER, self.CADASTRE_FIELD_CODE)
-        exists = self.checkTable(self.CADASTRE_SCHEMA, self.CADASTRE_LAYER)        
-        if exists:        
-            cursor.execute(sqlquery)
-            records = [(-1, '')]
-            records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
-            self.dlg.cboCadastre.blockSignals(True)
-            self.dlg.cboCadastre.clear()
-            for record in records:
-                self.dlg.cboCadastre.addItem(record[1], record[0])
-            self.dlg.cboCadastre.blockSignals(False)
-        else:
-            self.dlg.searchPlusTabMain.removeTab(3)  
-                    
-        # tab equipments
-        exists = self.checkTable(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)        
-        if exists:
-            sqlquery = 'SELECT "{}" FROM "{}"."{}" GROUP BY "{}" ORDER BY "{}"'.format(self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_TYPE)
-            cursor.execute(sqlquery)
-            records = ['']
-            records.extend([x[0] for x in cursor.fetchall() if x[0]]) # remove None values
-            self.dlg.cboType.blockSignals(True)
-            self.dlg.cboType.clear()
-            self.dlg.cboType.addItems(records)
-            self.dlg.cboType.blockSignals(False)
-        else:
-            self.dlg.searchPlusTabMain.removeTab(2)  
+        # tab Equipments
+        self.populateEquipments()
         
         # tab Toponyms
-        exists = self.checkTable(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)
-        if exists:
-            sqlquery = 'SELECT id, "{}" FROM "{}"."{}" ORDER BY "{}"'.format(self.PLACENAME_FIELD, self.PLACENAME_SCHEMA, self.PLACENAME_LAYER, self.PLACENAME_FIELD)
-            cursor.execute(sqlquery)
-            records = [(-1, '')]
-            records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
-            self.dlg.cboTopo.blockSignals(True)
-            self.dlg.cboTopo.clear()
-            for record in records:
-                self.dlg.cboTopo.addItem(record[1], record[0])
-            self.dlg.cboTopo.blockSignals(False)
-        else:
-            self.dlg.searchPlusTabMain.removeTab(1)                  
-            
-        # tab Carrerer
-        existsStreet = self.checkTable(self.STREET_SCHEMA, self.STREET_LAYER)
-        existsPortal = self.checkTable(self.PORTAL_SCHEMA, self.PORTAL_LAYER)        
-        if existsStreet and existsPortal:        
-            sqlquery = 'SELECT id, "{}", "{}", ST_AsText(geom) FROM "{}"."{}" ORDER BY "{}"'.format(self.STREET_FIELD_NAME, self.STREET_FIELD_CODE, self.STREET_SCHEMA, self.STREET_LAYER, self.STREET_FIELD_NAME)
-            cursor.execute(sqlquery)
-            records = [(-1, '', '', '')]
-            recs = cursor.fetchall()
-            records.extend(recs)
-            # records.extend([x for x in cursor.fetchall() if x[1]]) # remove None values
-            self.dlg.cboStreet.blockSignals(True)
-            self.dlg.cboStreet.clear()
-            for record in records:
-                self.dlg.cboStreet.addItem(record[1], record)
-            self.dlg.cboStreet.blockSignals(False)
-        else:
-            self.dlg.searchPlusTabMain.removeTab(0)     
+        self.populateToponyms()    
+                
+        # tab Streets      
+        self.populateStreets()
 
         # Get layers and full extent
         self.initialization()   
-    
-    
+      
+            
+    def populateCadastre(self):
+                    
+        # Check if we have this search option available
+        if self.cadastreLayer is None:
+            self.dlg.searchPlusTabMain.removeTab(3)  
+            return      
+        
+        layer = self.cadastreLayer
+        records = [(-1, '', '')]
+        idx_id = layer.fieldNameIndex('id')
+        idx_field_code = layer.fieldNameIndex(self.CADASTRE_FIELD_CODE)       
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            attrs = feature.attributes()
+            field_id = attrs[idx_id]    
+            field_code = attrs[idx_field_code]  
+            if not type(field_code) is QPyNullVariant:
+                elem = [field_id, field_code, geom.exportToWkt()]
+                records.append(elem)
+
+        # Fill cadastre combo
+        self.dlg.cboCadastre.blockSignals(True)
+        self.dlg.cboCadastre.clear()
+        records_sorted = sorted(records, key = operator.itemgetter(1))            
+        for i in range(len(records_sorted)):
+            record = records_sorted[i]
+            self.dlg.cboCadastre.addItem(record[1], record)
+        self.dlg.cboCadastre.blockSignals(False)   
+   
+   
+    def populateEquipments(self):
+                    
+        # Check if we have this search option available
+        if self.equipmentLayer is None:
+            self.dlg.searchPlusTabMain.removeTab(2)  
+            return      
+        
+        # Get layer features        
+        layer = self.equipmentLayer
+        records = ['']
+        idx_field_type = layer.fieldNameIndex(self.EQUIPMENT_FIELD_TYPE)       
+        for feature in layer.getFeatures():
+            attrs = feature.attributes()
+            field_type = attrs[idx_field_type]  
+            if not type(idx_field_type) is QPyNullVariant:
+                elem = field_type
+                records.append(elem)
+ 
+        # Fill equipment type combo (remove duplicates)km
+        records_set = list(set(records))
+        records_sorted = records_set
+        self.dlg.cboType.blockSignals(True)
+        self.dlg.cboType.clear()
+#         records_sorted = sorted(records_set, key = operator.itemgetter(1))            
+        for i in range(len(records_sorted)):
+            record = records_sorted[i]
+            self.dlg.cboType.addItem(record, record)
+        self.dlg.cboType.blockSignals(False)       
+                                   
+                
+    def populateToponyms(self):
+                                
+        # Check if we have this search option available
+        if self.placenameLayer is None:
+            self.dlg.searchPlusTabMain.removeTab(1)  
+            return      
+        
+        # Get layer features        
+        layer = self.placenameLayer
+        records = [(-1, '', '')]
+        idx_id = layer.fieldNameIndex('id')
+        idx_field = layer.fieldNameIndex(self.PLACENAME_FIELD)       
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            attrs = feature.attributes()
+            field_id = attrs[idx_id]    
+            field = attrs[idx_field]  
+            if not type(field) is QPyNullVariant:
+                elem = [field_id, field, geom.exportToWkt()]
+                records.append(elem)
+
+        # Fill toponym combo
+        self.dlg.cboTopo.blockSignals(True)
+        self.dlg.cboTopo.clear()
+        records_sorted = sorted(records, key = operator.itemgetter(1))            
+        for i in range(len(records_sorted)):
+            record = records_sorted[i]
+            self.dlg.cboTopo.addItem(record[1], record)
+        self.dlg.cboTopo.blockSignals(False)   
+                        
+                    
+    def populateStreets(self):
+        
+        # Check if we have this search option available
+        if self.streetLayer is None or self.portalLayer is None:
+            self.dlg.searchPlusTabMain.removeTab(0)  
+            return
+        
+        # Get layer features
+        layer = self.streetLayer
+        records = [(-1, '', '', '')]
+        idx_id = layer.fieldNameIndex('id')
+        idx_field_name = layer.fieldNameIndex(self.STREET_FIELD_NAME)
+        idx_field_code = layer.fieldNameIndex(self.STREET_FIELD_CODE)       
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            attrs = feature.attributes()
+            field_id = attrs[idx_id]    
+            field_name = attrs[idx_field_name]    
+            field_code = attrs[idx_field_code]  
+            if not type(field_code) is QPyNullVariant:
+                elem = [field_id, field_name, field_code, geom.exportToWkt()]
+                records.append(elem)
+
+        # Fill street combo
+        self.dlg.cboStreet.blockSignals(True)
+        self.dlg.cboStreet.clear()
+        records_sorted = sorted(records, key = operator.itemgetter(1))            
+        for i in range(len(records_sorted)):
+            record = records_sorted[i]
+            self.dlg.cboStreet.addItem(record[1], record)
+        self.dlg.cboStreet.blockSignals(False)    
+        
+                 
     def zoomOnStreet(self):
         ''' Zoom on the street with the prefined scale
         '''
@@ -497,7 +552,6 @@ class SearchPlus(QObject):
         # get code
         data = self.dlg.cboStreet.itemData(self.dlg.cboStreet.currentIndex())
         wkt = data[3] # to know the index see the query that populate the combo
-        
         geom = QgsGeometry.fromWkt(wkt)
         if not geom:
             message = self.tr('Can not correctly get geometry')
@@ -510,67 +564,94 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
     
     
-    def resetNumbers(self):
+    def getStreetNumbers(self):
         ''' Populate civic numbers depending on selected street. 
         Available civic numbers are linked with self.STREET_FIELD_CODE column code in self.PORTAL_LAYER
         and self.STREET_LAYER
-        '''
-        if not self.connection:
-            return
-        
+        '''       
         # get selected street
         selected = self.dlg.cboStreet.currentText()
         if selected == '':
             return
         
-        # get code
-        data = self.dlg.cboStreet.itemData( self.dlg.cboStreet.currentIndex() )
-        code = data[2] # to know the index see the query that populate the combo
+        # get street code
+        sel_street = self.dlg.cboStreet.itemData(self.dlg.cboStreet.currentIndex())
+        code = sel_street[2] # to know the index see the query that populate the combo
+        records = [[-1, '']]
         
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
-
-        # now get the list of indexes belonging to the current code
-        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.PORTAL_FIELD_NUMBER, self.STREET_SCHEMA, self.PORTAL_LAYER, self.PORTAL_FIELD_CODE, self.PORTAL_FIELD_NUMBER)
-        params = [code]
-        cursor.execute(sqlquery, params)
-        records = [(-1, '')]
-        records.extend( [x for x in cursor.fetchall() if x[1]] ) # remove None values
+        # Set filter expression
+        layer = self.portalLayer
+        idx_id = layer.fieldNameIndex('id')            
+        idx_field_number = layer.fieldNameIndex(self.PORTAL_FIELD_NUMBER)   
+        aux = self.PORTAL_FIELD_CODE+"='"+str(code)+"'" 
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            return               
+        
+        # Get a featureIterator from an expression:
+        # Get features from the iterator and do something
+        it = layer.getFeatures(QgsFeatureRequest(expr))
+        for feature in it: 
+            attrs = feature.attributes()
+            field_id = attrs[idx_id]    
+            field_number = attrs[idx_field_number]    
+            if not type(field_number) is QPyNullVariant:
+                elem = [field_id, field_number]
+                records.append(elem)
+                  
+        # Fill numbers combo
+        records_sorted = sorted(records, key = operator.itemgetter(1))           
         self.dlg.cboNumber.blockSignals(True)
         self.dlg.cboNumber.clear()
-        for record in records:
-            self.dlg.cboNumber.addItem(record[1], record[0])
-        self.dlg.cboNumber.blockSignals(False)        
+        for record in records_sorted:
+            self.dlg.cboNumber.addItem(record[1], record)
+        self.dlg.cboNumber.blockSignals(False)  
     
     
-    def resetEquipments(self):
+    def getEquipments(self):
         ''' Populate equipments combo depending on selected type. 
         Available equipments EQUIPMENT_FIELD_NAME belonging to the same EQUIPMENT_FIELD_TYPE of 
         the same layer EQUIPMENT_LAYER
-        '''
-        if not self.connection:
-            return
-        
+        '''      
         # get selected street
         selectedCode = self.dlg.cboType.currentText()
         if selectedCode == '':
             return
         
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
-
-        # now get the list of names belonging to the current type
-        sqlquery = 'SELECT id, "{}" FROM "{}"."{}" WHERE "{}" = %s ORDER BY "{}"; '.format(self.EQUIPMENT_FIELD_NAME, self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER, self.EQUIPMENT_FIELD_TYPE, self.EQUIPMENT_FIELD_NAME)
-        params = [selectedCode]
-        cursor.execute(sqlquery, params)
-        records = [(-1, '')]
-        records.extend( [x for x in cursor.fetchall() if x[1]] ) # remove None values
+        # get street code
+        sel_type = self.dlg.cboType.itemData(self.dlg.cboType.currentIndex())
+        records = [[-1, '']]
+                
+        # Set filter expression
+        layer = self.equipmentLayer
+        idx_id = layer.fieldNameIndex('id')            
+        idx_field_name = layer.fieldNameIndex(self.EQUIPMENT_FIELD_NAME)   
+        aux = self.EQUIPMENT_FIELD_TYPE+"='"+unicode(sel_type)+"'" 
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            return               
+        
+        # Get a featureIterator from an expression:
+        # Get features from the iterator and do something
+        it = layer.getFeatures(QgsFeatureRequest(expr))
+        for feature in it: 
+            attrs = feature.attributes()
+            field_id = attrs[idx_id]    
+            field_name = attrs[idx_field_name]    
+            if not type(field_name) is QPyNullVariant:
+                elem = [field_id, field_name]
+                records.append(elem)
+                  
+        # Fill numbers combo
+        records_sorted = sorted(records, key = operator.itemgetter(1))           
         self.dlg.cboEquipment.blockSignals(True)
         self.dlg.cboEquipment.clear()
-        for record in records:
-            self.dlg.cboEquipment.addItem(record[1], record[0])
-        self.dlg.cboEquipment.blockSignals(False) 
-    
+        for record in records_sorted:
+            self.dlg.cboEquipment.addItem(record[1], record)
+        self.dlg.cboEquipment.blockSignals(False)  
+            
     
     def validateX(self):   
         X = int(self.dlg.txtCoordX.text())
@@ -703,43 +784,25 @@ class SearchPlus(QObject):
     
     def displayCadastre(self):
         ''' Show cadastre data on the canvas when selected it in the relative tab
-        '''
-        # preconditions
-        if not self.connection:
-            return
-        
+        '''       
         cadastre = self.dlg.cboCadastre.currentText()
         if cadastre == '':
-            return
-            
-        if self.cadastreLayer is None:
-            self.initialization()                
+            return      
         
-        # get the id of the selected item
-        selId = self.dlg.cboCadastre.itemData(self.dlg.cboCadastre.currentIndex())
-        if not selId:
+        # get selected item
+        elem = self.dlg.cboCadastre.itemData(self.dlg.cboCadastre.currentIndex())
+        if not elem:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(cadastre))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
-
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
-
-        # tab Cadastre
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.CADASTRE_SCHEMA, self.CADASTRE_LAYER)
-        params = [selId] 
-        cursor.execute(sqlquery, params)
-        row = cursor.fetchone()
-        if not row:  
-            return
         
         # select this feature in order to copy to memory layer        
-        aux = "id = "+str(id) 
+        aux = "id = "+str(elem[0]) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -762,46 +825,25 @@ class SearchPlus(QObject):
     def displayEquipment(self):
         ''' Show equipment data on the canvas when selected it in the relative tab
         '''
-        # preconditions
-        if not self.connection:
-            return
-
         typ = self.dlg.cboType.currentText()
-        if typ == '':
-            return
-        
         equipment = self.dlg.cboEquipment.currentText()
-        if equipment == '':
+        if typ == '' or equipment == '':
             return
-            
-        if self.equipmentLayer is None:
-            self.initialization()      
         
-        # get the id of the selected item
-        selId = self.dlg.cboEquipment.itemData(self.dlg.cboEquipment.currentIndex())
-        if not selId:
+        # get selected item
+        elem = self.dlg.cboEquipment.itemData(self.dlg.cboEquipment.currentIndex())
+        if not elem:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(equipment))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
 
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
-
-        # tab Equipments
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.EQUIPMENT_SCHEMA, self.EQUIPMENT_LAYER)
-        params = [selId]           
-        cursor.execute(sqlquery, params)
-        row = cursor.fetchone()
-        if not row:  
-            return
-        
         # select this feature in order to copy to memory layer        
-        aux = "id = "+str(id) 
+        aux = "id = "+str(elem[0]) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -827,42 +869,24 @@ class SearchPlus(QObject):
     def displayToponym(self):
         ''' Show toponym data on the canvas when selected it in the relative tab
         '''
-        # preconditions
-        if not self.connection:
-            return
-
         toponym = self.dlg.cboTopo.currentText()   
         if toponym == '':
             return
-            
-        if self.placenameLayer is None:
-            self.initialization()
         
-        # get the id of the selected toponym
-        selId = self.dlg.cboTopo.itemData(self.dlg.cboTopo.currentIndex())
-        if not selId:
+        # get selected toponym
+        elem = self.dlg.cboTopo.itemData(self.dlg.cboTopo.currentIndex())
+        if not elem:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(toponym))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
 
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
-
-        # tab Toponyms
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s'.format(self.PLACENAME_SCHEMA, self.PLACENAME_LAYER)        
-        params = [selId]
-        cursor.execute(sqlquery, params)
-        row = cursor.fetchone()
-        if not row:   
-            return
-
         # select this feature in order to copy to memory layer        
-        aux = "id = "+str(id)         
+        aux = "id = "+str(elem[0])         
         expr = QgsExpression(aux)            
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -885,46 +909,25 @@ class SearchPlus(QObject):
     def displayStreetData(self):
         ''' Show street data on the canvas when selected street and number in street tab
         '''          
-        # preconditions
-        if not self.connection:
-            return
-
         street = self.dlg.cboStreet.currentText()
-        if street == '':
-            return
-        
         civic = self.dlg.cboNumber.currentText()
-        if civic == '':
-            return
-            
-        if self.portalLayer is None:
-            self.initialization()            
-        
-        # get the id of the selected portal
-        selId = self.dlg.cboNumber.itemData(self.dlg.cboNumber.currentIndex())
-        if not selId:
+        if street == '' or civic == '':
+            return  
+                
+        # get selected portal
+        elem = self.dlg.cboNumber.itemData(self.dlg.cboNumber.currentIndex())
+        if not elem:
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(civic))
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
-
-        # get cursor on wich execute query
-        cursor = self.connection.cursor()
-
-        # now get the list of indexes belonging to the current code
-        sqlquery = 'SELECT ST_AsText(geom) FROM "{}"."{}" WHERE id = %s; '.format(self.PORTAL_SCHEMA, self.PORTAL_LAYER)    
-        params = [selId]     
-        cursor.execute(sqlquery, params)
-        row = cursor.fetchone()
-        if not row:  
-            return
         
         # select this feature in order to copy to memory layer        
-        aux = "id = "+str(id) 
+        aux = "id = "+str(elem[0]) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, "searchplus", QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -985,9 +988,8 @@ class SearchPlus(QObject):
                 return
             self.initialization()       
             self.dlg.show()
-        
+                       
         # if not, setup connection               
         if not self.connection:
-            self.initConnection()      
-            
+            self.initConnection()                             
 

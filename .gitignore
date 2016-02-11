@@ -1,8 +1,7 @@
 # Project
 *.bat
 *.qgs
-*.pro
-test/*.*
+test/
 
 # temp files
 *~
@@ -29,3 +28,4 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pro
