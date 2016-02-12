@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- SearchPlus - A QGIS plugin Toponomastic searcherdefault
-                              -------------------
-        begin                : 2015-06-19
-        git sha              : $Format:%H$
+        begin                : June 2015
         copyright            : (C) 2015 by Luigi Pirelli
         email                : luipir@gmail.com
  ***************************************************************************/
-
-/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -26,7 +21,7 @@ import os.path
 
 from qgis.utils import active_plugins
 from qgis.gui import QgsMessageBar, QgsTextAnnotationItem
-from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsLogger, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField, QgsProject, QgsLayerTreeLayer
+from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField, QgsProject, QgsLayerTreeLayer
 from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal, QPyNullVariant
 from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
 
@@ -58,13 +53,12 @@ class SearchPlus(QObject):
         
         # Save reference to the QGIS interface
         self.iface = iface
-        # initialize plugin directory
+        
+        # initialize plugin directory and locale
         self.plugin_dir = os.path.dirname(__file__)
         self.pluginName = os.path.basename(self.plugin_dir)
-        # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(self.plugin_dir, 'i18n', 'SearchPlus_{}.qm'.format(locale))
-
         if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
@@ -72,13 +66,14 @@ class SearchPlus(QObject):
                 QCoreApplication.installTranslator(self.translator)         
         
         # load local settings of the plugin
+        self.app_name = "searchplus"        
         setting_file = os.path.join(self.plugin_dir, 'config', self.app_name+'.config')
         if not os.path.isfile(setting_file):
             message = "Config file not found at: "+setting_file            
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)            
             return False        
         self.settings = QSettings(setting_file, QSettings.IniFormat)
-        self.stylesFolder = self.plugin_dir+"/styles/"
+        self.stylesFolder = self.plugin_dir+"/styles/" 
             
         # load plugin settings
         self.loadPluginSettings()      
@@ -86,7 +81,6 @@ class SearchPlus(QObject):
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(self.app_name)
-        self.connection = None
         self.annotations = []
         self.streetLayer = None   
         self.placenameLayer = None    
@@ -96,45 +90,33 @@ class SearchPlus(QObject):
         self.placenameMemLayer = None    
         self.cadastreMemLayer = None  
         self.equipmentMemLayer = None  
-        self.portalMemLayer = None   
-        
-        # establish connection when all is completly running 
-        self.iface.initializationCompleted.connect(self.initConnection)
-         
-        # when connection is established, then set all GUI values
-        self.connectionEstablished.connect(self.populateGui)   
+        self.portalMemLayer = None    
+
+        self.iface.initializationCompleted.connect(self.populateGui) 
     
     
     def loadPluginSettings(self):
         ''' Load plugin settings
-        '''           
-        # get db credentials
-        self.CONNECTION_NAME = self.settings.value('db/CONNECTION_NAME', '')
-        self.CONNECTION_HOST = self.settings.value('db/CONNECTION_HOST', '')
-        self.CONNECTION_PORT = self.settings.value('db/CONNECTION_PORT', '5432')        
-        self.CONNECTION_DB = self.settings.value('db/CONNECTION_DB', '')
-        self.CONNECTION_USER = self.settings.value('db/CONNECTION_USER', '')
-        self.CONNECTION_PWD = self.settings.value('db/CONNECTION_PWD', '')        
-
-        # get all db configuration table/columns to load to populate the GUI
-        self.STREET_LAYER= self.settings.value('db/STREET_LAYER', '').lower()
-        self.STREET_FIELD_CODE= self.settings.value('db/STREET_FIELD_CODE', '').lower()
-        self.STREET_FIELD_NAME= self.settings.value('db/STREET_FIELD_NAME', '').lower()
+        '''  
+        # get layers configuration to populate the GUI
+        self.STREET_LAYER= self.settings.value('layers/STREET_LAYER', '').lower()
+        self.STREET_FIELD_CODE= self.settings.value('layers/STREET_FIELD_CODE', '').lower()
+        self.STREET_FIELD_NAME= self.settings.value('layers/STREET_FIELD_NAME', '').lower()
         
-        self.PORTAL_LAYER= self.settings.value('db/PORTAL_LAYER', '').lower()
-        self.PORTAL_FIELD_CODE= self.settings.value('db/PORTAL_FIELD_CODE', '').lower()
-        self.PORTAL_FIELD_NUMBER= self.settings.value('db/PORTAL_FIELD_NUMBER', '').lower()
+        self.PORTAL_LAYER= self.settings.value('layers/PORTAL_LAYER', '').lower()
+        self.PORTAL_FIELD_CODE= self.settings.value('layers/PORTAL_FIELD_CODE', '').lower()
+        self.PORTAL_FIELD_NUMBER= self.settings.value('layers/PORTAL_FIELD_NUMBER', '').lower()
         
-        self.PLACENAME_LAYER= self.settings.value('db/PLACENAME_LAYER', '').lower()
-        self.PLACENAME_FIELD= self.settings.value('db/PLACENAME_FIELD', '').lower()
+        self.PLACENAME_LAYER= self.settings.value('layers/PLACENAME_LAYER', '').lower()
+        self.PLACENAME_FIELD= self.settings.value('layers/PLACENAME_FIELD', '').lower()
         
-        self.EQUIPMENT_SCHEMA= self.settings.value('db/EQUIPMENT_SCHEMA', '').lower()
-        self.EQUIPMENT_LAYER= self.settings.value('db/EQUIPMENT_LAYER', '').lower()
-        self.EQUIPMENT_FIELD_TYPE= self.settings.value('db/EQUIPMENT_FIELD_TYPE', '').lower()
-        self.EQUIPMENT_FIELD_NAME= self.settings.value('db/EQUIPMENT_FIELD_NAME', '').lower()
+        self.EQUIPMENT_SCHEMA= self.settings.value('layers/EQUIPMENT_SCHEMA', '').lower()
+        self.EQUIPMENT_LAYER= self.settings.value('layers/EQUIPMENT_LAYER', '').lower()
+        self.EQUIPMENT_FIELD_TYPE= self.settings.value('layers/EQUIPMENT_FIELD_TYPE', '').lower()
+        self.EQUIPMENT_FIELD_NAME= self.settings.value('layers/EQUIPMENT_FIELD_NAME', '').lower()
         
-        self.CADASTRE_LAYER= self.settings.value('db/CADASTRE_LAYER', '').lower()
-        self.CADASTRE_FIELD_CODE= self.settings.value('db/CADASTRE_FIELD_CODE', '').lower()
+        self.CADASTRE_LAYER= self.settings.value('layers/CADASTRE_LAYER', '').lower()
+        self.CADASTRE_FIELD_CODE= self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
         
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
@@ -322,85 +304,13 @@ class SearchPlus(QObject):
             self.dlg.deleteLater()
             del self.dlg
             
-             
-    def initConnection(self):
-        ''' Establish connection with the default credentials
-        Connection name is get from QGIS connection. Will be used the connection
-        configured int he plugin settings
-        '''          
-        if self.dlg and not self.dlg.isVisible():
-            return
-        
-        # eventually close opened connections
-        try:
-            self.connection.close()
-        except:
-            pass
-        
-        # get connection name (only if set in configuration file)    
-        SSL_MODE = 0        
-        if self.CONNECTION_NAME != '':
-            # look for connection data in QGIS configuration (if exists)
-            qgisSettings = QSettings()     
-            root_conn = "/PostgreSQL/connections/"          
-            qgisSettings.beginGroup(root_conn);           
-            groups = qgisSettings.childGroups();                                
-            if self.CONNECTION_NAME in groups:      
-                root = self.CONNECTION_NAME+"/"  
-                self.CONNECTION_HOST = qgisSettings.value(root+"host", '')
-                self.CONNECTION_PORT = qgisSettings.value(root+"port", '')            
-                self.CONNECTION_DB = qgisSettings.value(root+"database", '')
-                self.CONNECTION_USER = qgisSettings.value(root+"username", '')
-                self.CONNECTION_PWD = qgisSettings.value(root+"password", '')             
-                SSL_MODE = qgisSettings.value(root+"sslmode", QgsDataSourceURI.SSLdisable) 
-            #else:
-                #self.iface.messageBar().pushMessage("Connection name '"+self.CONNECTION_NAME+"' not found.Please fix it or leave it empty", QgsMessageBar.WARNING, 5)
-        
-        # get realm of the connection (realm don't have use ry pwd)
-        # realm is the connectioInfo from QgsDataSourceURI
-        self.uri = QgsDataSourceURI()
-        self.uri.setConnection(self.CONNECTION_HOST, self.CONNECTION_PORT, self.CONNECTION_DB, '',  '', int(SSL_MODE))
-        connInfo = self.uri.connectionInfo()
-        
-        # get credentials if at least there's no PWD
-        if not self.CONNECTION_PWD:
-            # get credentials and mutate cache => need lock
-            QgsCredentials.instance().lock()
-    
-            (ok, self.CONNECTION_USER, self.CONNECTION_PWD) = QgsCredentials.instance().get(connInfo, self.CONNECTION_USER, self.CONNECTION_PWD)
-            if not ok:
-                QgsCredentials.instance().unlock()
-                message = self.tr('Refused or Can not get credentials for realm: {} '.format(connInfo))
-                self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
-                return
-            
-            # unlock credentials... but not add to cache
-            # wait to verify that connection is ok to add into the cache
-            QgsCredentials.instance().unlock()
-        
-        # add user and password if not set in the previous setConnection 
-        self.uri.setConnection(self.CONNECTION_HOST, self.CONNECTION_PORT, self.CONNECTION_DB, self.CONNECTION_USER, self.CONNECTION_PWD, int(SSL_MODE))
-        
-        # connect          
-        try:
-            self.connection = psycopg2.connect(self.uri.connectionInfo().encode('utf-8'))
-        except Exception as ex:
-            message = self.tr("Can not connect to database '{}' for reason: {} ".format(self.CONNECTION_DB, str(ex)))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.CRITICAL, 5)          
-            return
-        else:
-            # last credential were ok, so record them in the cache
-            QgsCredentials.instance().lock()
-            QgsCredentials.instance().put(connInfo, self.CONNECTION_USER, self.CONNECTION_PWD)
-            QgsCredentials.instance().unlock()
-                   
-        # emit signal that connection is established
-        self.connectionEstablished.emit()
-        
-                     
+                 
     def populateGui(self):
-        ''' Populate the interface with values get from DB
-        '''                          
+        ''' Populate the interface with values get from layers
+        '''       
+        # Get layers and full extent
+        self.initialization()       
+                               
         # tab Cadastre
         self.populateCadastre()
         
@@ -413,9 +323,6 @@ class SearchPlus(QObject):
         # tab Streets      
         self.populateStreets()
 
-        # Get layers and full extent
-        self.initialization()   
-      
             
     def populateCadastre(self):
                     
@@ -986,10 +893,6 @@ class SearchPlus(QObject):
             # check if the plugin is active
             if not self.pluginName in active_plugins:
                 return
-            self.initialization()       
+            self.populateGui()       
             self.dlg.show()
-                       
-        # if not, setup connection               
-        if not self.connection:
-            self.initConnection()                             
-
+                                             

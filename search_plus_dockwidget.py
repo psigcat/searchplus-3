@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- SearchPlus - A QGIS plugin Toponomastic searcher
-                              -------------------
-        begin                : 2015-06-19
-        git sha              : $Format:%H$
+        begin                : June 2015
         copyright            : (C) 2015 by Luigi Pirelli
         email                : luipir@gmail.com
  ***************************************************************************/
-
-/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
