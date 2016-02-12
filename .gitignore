@@ -29,3 +29,4 @@ var/
 .installed.cfg
 *.egg
 *.pro
+*.db

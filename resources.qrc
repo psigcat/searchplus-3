@@ -1,5 +1,6 @@
 <RCC>
-    <qresource prefix="/plugins/SearchPlus" >
-        <file>icon_searchplus.png</file>
+    <qresource prefix="/plugins/SearchPlus">
+        <file>icons/icon_searchplus.png</file>
+        <file>icons/remove_mem_layers.png</file>        
     </qresource>
 </RCC>

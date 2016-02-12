@@ -97,7 +97,7 @@ class SearchPlus(QObject):
     
     def loadPluginSettings(self):
         ''' Load plugin settings
-        '''  
+        '''           
         # get layers configuration to populate the GUI
         self.STREET_LAYER= self.settings.value('layers/STREET_LAYER', '').lower()
         self.STREET_FIELD_CODE= self.settings.value('layers/STREET_FIELD_CODE', '').lower()
@@ -127,6 +127,9 @@ class SearchPlus(QObject):
             self.toolbar = self.iface.addToolBar(u'SearchPlus')
             self.toolbar.setObjectName(u'SearchPlus')        
         
+        # Enable action Remove Memory Layers?
+        self.removeMemoryLayersAction = bool(int(self.settings.value('status/removeMemoryLayersAction', 0)))
+
 
     def initialization(self):
     
@@ -269,8 +272,12 @@ class SearchPlus(QObject):
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/SearchPlus/icon_searchplus.png'
+        icon_path = ':/plugins/SearchPlus/icons/icon_searchplus.png'
         self.add_action(icon_path, self.tr('Advanced searcher'), self.run, parent=self.iface.mainWindow(), add_to_toolbar=self.pluginToolbarEnabled)
+
+        if self.removeMemoryLayersAction:
+            icon_path = ':/plugins/SearchPlus/icons/remove_mem_layers.png'
+            self.add_action(icon_path, self.tr('Remove memory layers'), self.removeMemoryLayers, parent=self.iface.mainWindow(), add_to_toolbar=self.pluginToolbarEnabled)
 
         # Create the dock widget and dock it but hide it waiting the ond of qgis loading
         self.dlg = SearchPlusDockWidget(self.iface.mainWindow())
@@ -895,4 +902,15 @@ class SearchPlus(QObject):
                 return
             self.populateGui()       
             self.dlg.show()
+    
+    
+    def removeMemoryLayers(self):
+        """Iterate over all layers and remove memory ones"""         
+        # Iterate over all layers to get the ones set in config file   
+        layers = self.iface.legendInterface().layers()
+        for cur_layer in layers:     
+            layer_name = cur_layer.name().lower()         
+            if "selected_" in layer_name:
+                QgsMapLayerRegistry.instance().removeMapLayer(cur_layer.id())
+   
                                              
