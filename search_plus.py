@@ -67,12 +67,12 @@ class SearchPlus(QObject):
         
         # load local settings of the plugin
         self.app_name = "searchplus"        
-        setting_file = os.path.join(self.plugin_dir, 'config', self.app_name+'.config')
-        if not os.path.isfile(setting_file):
-            message = "Config file not found at: "+setting_file            
+        self.setting_file = os.path.join(self.plugin_dir, 'config', self.app_name+'.config')
+        if not os.path.isfile(self.setting_file):
+            message = "Config file not found at: "+self.setting_file            
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)            
             return False        
-        self.settings = QSettings(setting_file, QSettings.IniFormat)
+        self.settings = QSettings(self.setting_file, QSettings.IniFormat)
         self.stylesFolder = self.plugin_dir+"/styles/" 
             
         # load plugin settings
@@ -118,6 +118,11 @@ class SearchPlus(QObject):
         self.CADASTRE_LAYER= self.settings.value('layers/CADASTRE_LAYER', '').lower()
         self.CADASTRE_FIELD_CODE= self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
         
+        self.QML_PORTAL = self.settings.value('layers/QML_EQUIPMNET', 'portal.qml').lower()
+        self.QML_TOPONYM = self.settings.value('layers/QML_TOPONYM', 'toponym.qml').lower()
+        self.QML_EQUIPMENT = self.settings.value('layers/QML_EQUIPMNET', 'equipment.qml').lower()
+        self.QML_CADASTRE = self.settings.value('layers/QML_EQUIPMNET', 'cadastre.qml').lower()
+        
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
         
@@ -138,7 +143,7 @@ class SearchPlus(QObject):
             
             
     def getLayers(self): 
-        
+                               
         # Iterate over all layers to get the ones set in config file   
         layers = self.iface.legendInterface().layers()
         for cur_layer in layers:     
@@ -434,14 +439,14 @@ class SearchPlus(QObject):
         records = [(-1, '', '', '')]
         idx_id = layer.fieldNameIndex('id')
         idx_field_name = layer.fieldNameIndex(self.STREET_FIELD_NAME)
-        idx_field_code = layer.fieldNameIndex(self.STREET_FIELD_CODE)       
+        idx_field_code = layer.fieldNameIndex(self.STREET_FIELD_CODE)    
         for feature in layer.getFeatures():
             geom = feature.geometry()
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is QPyNullVariant:
+            if not type(field_code) is QPyNullVariant and geom is not None:
                 elem = [field_id, field_name, field_code, geom.exportToWkt()]
                 records.append(elem)
 
@@ -494,24 +499,35 @@ class SearchPlus(QObject):
         records = [[-1, '']]
         
         # Set filter expression
-        layer = self.portalLayer
-        idx_id = layer.fieldNameIndex('id')            
+        layer = self.portalLayer       
+        idx_field_code = layer.fieldNameIndex(self.PORTAL_FIELD_CODE)            
         idx_field_number = layer.fieldNameIndex(self.PORTAL_FIELD_NUMBER)   
         aux = self.PORTAL_FIELD_CODE+"='"+str(code)+"'" 
+        
+        # Check filter and existence of fields
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 10)        
             return               
-        
+        if idx_field_code == -1:    
+            message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
+                format(self.PORTAL_FIELD_CODE, layer.name(), self.setting_file, 'PORTAL_FIELD_CODE'))            
+            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            return      
+        if idx_field_number == -1:    
+            message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
+                format(self.PORTAL_FIELD_NUMBER, layer.name(), self.setting_file, 'PORTAL_FIELD_NUMBER'))            
+            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            return      
+            
         # Get a featureIterator from an expression:
         # Get features from the iterator and do something
         it = layer.getFeatures(QgsFeatureRequest(expr))
         for feature in it: 
-            attrs = feature.attributes()
-            field_id = attrs[idx_id]    
+            attrs = feature.attributes() 
             field_number = attrs[idx_field_number]    
             if not type(field_number) is QPyNullVariant:
-                elem = [field_id, field_number]
+                elem = [code, field_number]
                 records.append(elem)
                   
         # Fill numbers combo
@@ -730,7 +746,7 @@ class SearchPlus(QObject):
         self.cadastreMemLayer = self.copySelected(self.cadastreLayer, self.cadastreMemLayer, "Polygon")         
          
         # Load style
-        self.loadStyle(self.cadastreMemLayer, "cadastre.qml")  
+        self.loadStyle(self.cadastreMemLayer, self.QML_CADASTRE)  
 
         # Zoom to scale
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))             
@@ -774,7 +790,7 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
         
         # Load style
-        self.loadStyle(self.equipmentMemLayer, "equipment.qml")          
+        self.loadStyle(self.equipmentMemLayer, self.QML_EQUIPMENT)          
 
         # Zoom to scale
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))        
@@ -814,7 +830,7 @@ class SearchPlus(QObject):
         self.placenameMemLayer = self.copySelected(self.placenameLayer, self.placenameMemLayer, "Linestring")
         
         # Load style
-        self.loadStyle(self.placenameMemLayer, "toponym.qml")        
+        self.loadStyle(self.placenameMemLayer, self.QML_TOPONYM)        
         
         # Zoom to scale
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))        
@@ -838,7 +854,7 @@ class SearchPlus(QObject):
             return
         
         # select this feature in order to copy to memory layer        
-        aux = "id = "+str(elem[0]) 
+        aux = self.PORTAL_FIELD_CODE+"='"+str(elem[0])+"' AND "+self.PORTAL_FIELD_NUMBER+"='"+str(elem[1])+"'"
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
             self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
@@ -858,7 +874,7 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
         
         # Load style
-        self.loadStyle(self.portalMemLayer, "portal.qml")         
+        self.loadStyle(self.portalMemLayer, self.QML_PORTAL)         
         
         
     def displayAnnotation(self, geom, message):
