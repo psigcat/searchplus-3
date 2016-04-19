@@ -25,30 +25,23 @@ from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, Q
 from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal, QPyNullVariant
 from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
 
-# PostGIS import
-import psycopg2
-import psycopg2.extensions
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
-psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY) # Initialize Qt resources from file resources.py
-
-import resources_rc
 from utils import *  # @UnusedWildImport
 from search_plus_dockwidget import SearchPlusDockWidget
 
 
 class SearchPlus(QObject):
-    """QGIS Plugin Implementation."""
+    ''' QGIS Plugin Implementation. '''
 
     connectionEstablished = pyqtSignal()
 
     def __init__(self, iface):
-        """Constructor.
+        ''' Constructor.
 
         :param iface: An interface instance that will be passed to this class
             which provides the hook by which you can manipulate the QGIS
             application at run time.
         :type iface: QgsInterface
-        """           
+        '''          
         super(SearchPlus, self).__init__()
         
         # Save reference to the QGIS interface
@@ -99,24 +92,24 @@ class SearchPlus(QObject):
         ''' Load plugin settings
         '''           
         # get layers configuration to populate the GUI
-        self.STREET_LAYER= self.settings.value('layers/STREET_LAYER', '').lower()
-        self.STREET_FIELD_CODE= self.settings.value('layers/STREET_FIELD_CODE', '').lower()
-        self.STREET_FIELD_NAME= self.settings.value('layers/STREET_FIELD_NAME', '').lower()
+        self.STREET_LAYER = '"'+self.settings.value('layers/STREET_LAYER', '').lower()+'"'
+        self.STREET_FIELD_CODE = self.settings.value('layers/STREET_FIELD_CODE', '').lower()
+        self.STREET_FIELD_NAME = self.settings.value('layers/STREET_FIELD_NAME', '').lower()
         
-        self.PORTAL_LAYER= self.settings.value('layers/PORTAL_LAYER', '').lower()
-        self.PORTAL_FIELD_CODE= self.settings.value('layers/PORTAL_FIELD_CODE', '').lower()
-        self.PORTAL_FIELD_NUMBER= self.settings.value('layers/PORTAL_FIELD_NUMBER', '').lower()
+        self.PORTAL_LAYER = '"'+self.settings.value('layers/PORTAL_LAYER', '').lower()+'"'
+        self.PORTAL_FIELD_CODE = self.settings.value('layers/PORTAL_FIELD_CODE', '').lower()
+        self.PORTAL_FIELD_NUMBER = self.settings.value('layers/PORTAL_FIELD_NUMBER', '').lower()
         
-        self.PLACENAME_LAYER= self.settings.value('layers/PLACENAME_LAYER', '').lower()
-        self.PLACENAME_FIELD= self.settings.value('layers/PLACENAME_FIELD', '').lower()
+        self.PLACENAME_LAYER = '"'+self.settings.value('layers/PLACENAME_LAYER', '').lower()+'"'
+        self.PLACENAME_FIELD = self.settings.value('layers/PLACENAME_FIELD', '').lower()
         
-        self.EQUIPMENT_SCHEMA= self.settings.value('layers/EQUIPMENT_SCHEMA', '').lower()
-        self.EQUIPMENT_LAYER= self.settings.value('layers/EQUIPMENT_LAYER', '').lower()
-        self.EQUIPMENT_FIELD_TYPE= self.settings.value('layers/EQUIPMENT_FIELD_TYPE', '').lower()
-        self.EQUIPMENT_FIELD_NAME= self.settings.value('layers/EQUIPMENT_FIELD_NAME', '').lower()
+        self.EQUIPMENT_SCHEMA = '"'+self.settings.value('layers/EQUIPMENT_SCHEMA', '').lower()+'"'
+        self.EQUIPMENT_LAYER = '"'+self.settings.value('layers/EQUIPMENT_LAYER', '').lower()+'"'
+        self.EQUIPMENT_FIELD_TYPE = self.settings.value('layers/EQUIPMENT_FIELD_TYPE', '').lower()
+        self.EQUIPMENT_FIELD_NAME = self.settings.value('layers/EQUIPMENT_FIELD_NAME', '').lower()
         
-        self.CADASTRE_LAYER= self.settings.value('layers/CADASTRE_LAYER', '').lower()
-        self.CADASTRE_FIELD_CODE= self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
+        self.CADASTRE_LAYER = '"'+self.settings.value('layers/CADASTRE_LAYER', '').lower()+'"'
+        self.CADASTRE_FIELD_CODE = self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
         
         self.QML_PORTAL = self.settings.value('layers/QML_EQUIPMNET', 'portal.qml').lower()
         self.QML_TOPONYM = self.settings.value('layers/QML_TOPONYM', 'toponym.qml').lower()
@@ -148,12 +141,12 @@ class SearchPlus(QObject):
         layers = self.iface.legendInterface().layers()
         for cur_layer in layers:     
             uri = cur_layer.dataProvider().dataSourceUri().lower()   
-            pos_ini = uri.find("table=")
-            pos_fi = uri.find("(geom)")  
-            uri_table = uri
+            pos_ini = uri.find('table=')
+            pos_fi = uri.find('" ')  
+            uri_table = uri   
             if pos_ini <> -1 and pos_fi <> -1:
-                uri_table = uri[pos_ini:pos_fi]            
-            if self.STREET_LAYER in uri_table:
+                uri_table = uri[pos_ini+6:pos_fi+1]             
+            if self.STREET_LAYER in uri_table:         
                 self.streetLayer = cur_layer
             if self.PLACENAME_LAYER in uri_table:
                 self.placenameLayer = cur_layer     
@@ -196,8 +189,7 @@ class SearchPlus(QObject):
             
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
-        """Get the translation for a string using Qt translation API.
-
+        ''' Get the translation for a string using Qt translation API.
         We implement this ourselves since we do not inherit QObject.
 
         :param message: String for translation.
@@ -205,13 +197,13 @@ class SearchPlus(QObject):
 
         :returns: Translated version of message.
         :rtype: QString
-        """
+        '''
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('SearchPlus', message)
 
 
     def add_action(self, icon_path, text, callback, enabled_flag=True, add_to_menu=True, add_to_toolbar=True, status_tip=None, whats_this=None, parent=None):
-        """Add a toolbar icon to the toolbar.
+        ''' Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
             path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
@@ -248,7 +240,7 @@ class SearchPlus(QObject):
         :returns: The action that was created. Note that the action is also
             added to self.actions list.
         :rtype: QAction
-        """
+        '''
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
@@ -275,7 +267,8 @@ class SearchPlus(QObject):
 
         
     def initGui(self):
-        """Create the menu entries and toolbar icons inside the QGIS GUI."""
+        ''' Create the menu entries and toolbar icons inside the QGIS GUI
+        '''
 
         icon_path = ':/plugins/SearchPlus/icons/icon_searchplus.png'
         self.add_action(icon_path, self.tr('Advanced searcher'), self.run, parent=self.iface.mainWindow(), add_to_toolbar=self.pluginToolbarEnabled)
@@ -304,7 +297,8 @@ class SearchPlus(QObject):
         
     
     def unload(self):
-        """Removes the plugin menu item and icon from QGIS GUI."""
+        ''' Removes the plugin menu item and icon from QGIS GUI
+        '''
         for action in self.actions:
             self.iface.removePluginMenu(self.tr(self.app_name), action)
             self.iface.removeToolBarIcon(action)
@@ -485,8 +479,8 @@ class SearchPlus(QObject):
     
     def getStreetNumbers(self):
         ''' Populate civic numbers depending on selected street. 
-        Available civic numbers are linked with self.STREET_FIELD_CODE column code in self.PORTAL_LAYER
-        and self.STREET_LAYER
+            Available civic numbers are linked with self.STREET_FIELD_CODE column code in self.PORTAL_LAYER
+            and self.STREET_LAYER
         '''       
         # get selected street
         selected = self.dlg.cboStreet.currentText()
@@ -541,8 +535,8 @@ class SearchPlus(QObject):
     
     def getEquipments(self):
         ''' Populate equipments combo depending on selected type. 
-        Available equipments EQUIPMENT_FIELD_NAME belonging to the same EQUIPMENT_FIELD_TYPE of 
-        the same layer EQUIPMENT_LAYER
+            Available equipments EQUIPMENT_FIELD_NAME belonging to the same EQUIPMENT_FIELD_TYPE of 
+            the same layer EQUIPMENT_LAYER
         '''      
         # get selected street
         selectedCode = self.dlg.cboType.currentText()
@@ -600,7 +594,8 @@ class SearchPlus(QObject):
             
     
     def manageMemLayer(self, layer):
-    
+        ''' Delete previous features from all memory layers 
+            Make layer not visible '''
         if layer is not None:
             layer.startEditing()        
             it = layer.getFeatures()
@@ -611,18 +606,17 @@ class SearchPlus(QObject):
 
 
     def manageMemLayers(self):
-        
+        ''' Delete previous features from all memory layers 
+        '''        
         self.manageMemLayer(self.placenameMemLayer)
         self.manageMemLayer(self.cadastreMemLayer)
         self.manageMemLayer(self.equipmentMemLayer)
         self.manageMemLayer(self.portalMemLayer)
       
     
-    # Copy from selected layer to memory layer
     def copySelected(self, layer, mem_layer, geom_type):
-            
-        # Delete previous features from all memory layers
-        # Make layer not visible
+        ''' Copy from selected layer to memory layer 
+        '''
         self.manageMemLayers()
         
         # Create memory layer if not already set
@@ -713,7 +707,7 @@ class SearchPlus(QObject):
     
     
     def displayCadastre(self):
-        ''' Show cadastre data on the canvas when selected it in the relative tab
+        ''' Show cadastre data on the canvas when selected it in the relative tab 
         '''       
         cadastre = self.dlg.cboCadastre.currentText()
         if cadastre == '':
@@ -753,7 +747,7 @@ class SearchPlus(QObject):
         
          
     def displayEquipment(self):
-        ''' Show equipment data on the canvas when selected it in the relative tab
+        ''' Show equipment data on the canvas when selected it in the relative tab 
         '''
         typ = self.dlg.cboType.currentText()
         equipment = self.dlg.cboEquipment.currentText()
@@ -797,7 +791,7 @@ class SearchPlus(QObject):
          
          
     def displayToponym(self):
-        ''' Show toponym data on the canvas when selected it in the relative tab
+        ''' Show toponym data on the canvas when selected it in the relative tab 
         '''
         toponym = self.dlg.cboTopo.currentText()   
         if toponym == '':
@@ -837,7 +831,7 @@ class SearchPlus(QObject):
          
          
     def displayStreetData(self):
-        ''' Show street data on the canvas when selected street and number in street tab
+        ''' Show street data on the canvas when selected street and number in street tab 
         '''          
         street = self.dlg.cboStreet.currentText()
         civic = self.dlg.cboNumber.currentText()
@@ -867,7 +861,7 @@ class SearchPlus(QObject):
         ids = [i.id() for i in it]
         self.portalLayer.setSelectedFeatures(ids)
         
-        # Copy selected features to memory layer          
+        # Copy selected features to memory layer     
         self.portalMemLayer = self.copySelected(self.portalLayer, self.portalMemLayer, "Point")       
 
         # Zoom to point layer
@@ -878,7 +872,7 @@ class SearchPlus(QObject):
         
         
     def displayAnnotation(self, geom, message):
-        ''' Display a specific message in the centroid of a specific geometry
+        ''' Display a specific message in the centroid of a specific geometry 
         '''
         centroid = geom.centroid()
         
@@ -911,7 +905,8 @@ class SearchPlus(QObject):
     
     
     def run(self):
-        """Run method activated byt the toolbar action button"""         
+        ''' Run method activated byt the toolbar action button 
+        '''         
         if self.dlg and not self.dlg.isVisible():
             # check if the plugin is active
             if not self.pluginName in active_plugins:
@@ -921,12 +916,11 @@ class SearchPlus(QObject):
     
     
     def removeMemoryLayers(self):
-        """Iterate over all layers and remove memory ones"""         
-        # Iterate over all layers to get the ones set in config file   
+        ''' Iterate over all layers and remove memory ones 
+        '''         
         layers = self.iface.legendInterface().layers()
         for cur_layer in layers:     
             layer_name = cur_layer.name().lower()         
             if "selected_" in layer_name:
-                QgsMapLayerRegistry.instance().removeMapLayer(cur_layer.id())
-   
+                QgsMapLayerRegistry.instance().removeMapLayer(cur_layer.id())   
                                              

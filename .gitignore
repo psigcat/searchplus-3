@@ -2,6 +2,7 @@
 *.bat
 *.qgs
 test/
+config/searchplus -*
 
 # temp files
 *~
@@ -12,6 +13,9 @@ __pycache__/
 
 
 # Distribution / packaging
+.project
+.pydevproject
+.settings
 .Python
 env/
 build/
