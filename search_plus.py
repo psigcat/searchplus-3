@@ -25,6 +25,7 @@ from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, Q
 from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal, QPyNullVariant
 from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
 
+import resources_rc
 from utils import *  # @UnusedWildImport
 from search_plus_dockwidget import SearchPlusDockWidget
 
