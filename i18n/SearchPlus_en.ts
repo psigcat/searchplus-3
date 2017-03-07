@@ -5,11 +5,11 @@
     <name>SearchPlus</name>    
     <message>
         <source>searchplus</source>
-        <translation type="unfinished">Searchplus</translation>
+        <translation>Searchplus</translation>
     </message>
     <message>
         <source>Advanced searcher</source>
-        <translation type="unfinished">Advanced searcher</translation>
+        <translation>Advanced searcher</translation>
     </message>
 </context>
 <context>
@@ -56,7 +56,7 @@
     </message>
     <message>
         <source>Introdu&#xc3;&#xaf;u la refer&#xc3;&#xa8;ncia cadastral i premeu Acceptar (exemple: &apos;5123501DF1952S&apos;):</source>
-        <translation type="unfinished">Select cadastral reference (example: '5123501DF1952S'):</translation>
+        <translation>Select cadastral reference (example: '5123501DF1952S'):</translation>
     </message>
     <message>
         <source>UTM</source>
@@ -64,7 +64,7 @@
     </message>
     <message>
         <source>Introdu&#xc3;&#xaf;u el parell de coordenades i premeu Acceptar (exemple: X &apos;415165&apos;, Y &apos;4592355&apos;):</source>
-        <translation type="unfinished">Enter coordinates and press Enter (example: X '415165', Y '4592355'):</translation>
+        <translation>Enter coordinates and press Enter (example: X '415165', Y '4592355'):</translation>
     </message>
     <message>
         <source>X:</source>
@@ -77,6 +77,18 @@
     <message>
         <source>Recerca</source>
         <translation>Research</translation>
+    </message>
+    <message>
+        <source>Nucli urb&#xc3;&#xa0;:</source>
+        <translation>Urban Core:</translation>
+    </message>
+    <message>
+        <source>Parcel&#xc2;&#xb7;la:</source>
+        <translation>Plot:</translation>
+    </message>
+    <message>
+        <source>Parcel&#xc2;&#xb7;les</source>
+        <translation>Plots</translation>
     </message>
 </context>
 </TS>

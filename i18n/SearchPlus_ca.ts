@@ -78,5 +78,17 @@
         <source>Recerca</source>
         <translation>Recerca</translation>
     </message>
+    <message>
+        <source>Nucli urb&#xc3;&#xa0;:</source>
+        <translation>Nucli urb&#xc3;&#xa0;:</translation>
+    </message>
+    <message>
+        <source>Parcel&#xc2;&#xb7;la:</source>
+        <translation>Parcel&#xc2;&#xb7;la:</translation>
+    </message>
+    <message>
+        <source>Parcel&#xc2;&#xb7;les</source>
+        <translation>Parcel&#xc2;&#xb7;les</translation>
+    </message>
 </context>
 </TS>

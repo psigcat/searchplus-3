@@ -78,5 +78,17 @@
         <source>Recerca</source>
         <translation>Busca</translation>
     </message>
+    <message>
+        <source>Nucli urb&#xc3;&#xa0;:</source>
+        <translation>Núcleo urbano:</translation>
+    </message>
+    <message>
+        <source>Parcel&#xc2;&#xb7;la:</source>
+        <translation>Parcela:</translation>
+    </message>
+    <message>
+        <source>Parcel&#xc2;&#xb7;les</source>
+        <translation>Parcelas</translation>
+    </message>
 </context>
 </TS>
