@@ -85,6 +85,9 @@ class SearchPlus(QObject):
         self.cadastreMemLayer = None  
         self.equipmentMemLayer = None  
         self.portalMemLayer = None    
+        self.coreLayer = None
+        self.plotLayer = None
+        self.plotMemLayer = None
 
         self.iface.initializationCompleted.connect(self.populateGui) 
     
@@ -111,11 +114,20 @@ class SearchPlus(QObject):
         
         self.CADASTRE_LAYER = '"'+self.settings.value('layers/CADASTRE_LAYER', '').lower()+'"'
         self.CADASTRE_FIELD_CODE = self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
-        
-        self.QML_PORTAL = self.settings.value('layers/QML_EQUIPMNET', 'portal.qml').lower()
+
+        self.CORE_LAYER = '"'+self.settings.value('layers/CORE_LAYER', '').lower()+'"'
+        self.CORE_FIELD_CODE = '"'+self.settings.value('layers/CORE_FIELD_CODE', '').lower()+'"'
+        self.CORE_FIELD_NAME = '"'+self.settings.value('layers/CORE_FIELD_NAME', '').lower()+'"'
+
+        self.PLOT_LAYER = '"'+self.settings.value('layers/PLOT_LAYER', '').lower()+'"'
+        self.PLOT_FIELD_CODE = '"'+self.settings.value('layers/PLOT_FIELD_CODE', '').lower()+'"'
+        self.PLOT_FIELD_ADDRESS = '"'+self.settings.value('layers/PLOT_FIELD_ADDRESS', '').lower()+'"'
+
+        self.QML_PORTAL = self.settings.value('layers/QML_PORTAL', 'portal.qml').lower()
         self.QML_TOPONYM = self.settings.value('layers/QML_TOPONYM', 'toponym.qml').lower()
-        self.QML_EQUIPMENT = self.settings.value('layers/QML_EQUIPMNET', 'equipment.qml').lower()
-        self.QML_CADASTRE = self.settings.value('layers/QML_EQUIPMNET', 'cadastre.qml').lower()
+        self.QML_EQUIPMENT = self.settings.value('layers/QML_EQUIPMENT', 'equipment.qml').lower()
+        self.QML_CADASTRE = self.settings.value('layers/QML_CADASTRE', 'cadastre.qml').lower()
+        self.QML_PLOT = self.settings.value('layers/QML_PLOT', 'plot.qml').lower()
         
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
@@ -146,17 +158,21 @@ class SearchPlus(QObject):
             pos_fi = uri.find('" ')  
             uri_table = uri   
             if pos_ini <> -1 and pos_fi <> -1:
-                uri_table = uri[pos_ini+6:pos_fi+1]             
+                uri_table = uri[pos_ini+6:pos_fi+1]     
             if self.STREET_LAYER in uri_table:         
                 self.streetLayer = cur_layer
             if self.PLACENAME_LAYER in uri_table:
                 self.placenameLayer = cur_layer     
             if self.CADASTRE_LAYER in uri_table:
                 self.cadastreLayer = cur_layer   
-            if self.EQUIPMENT_LAYER in uri_table:  
+            if self.EQUIPMENT_LAYER in uri_table:
                 self.equipmentLayer = cur_layer  
             if self.PORTAL_LAYER in uri_table:
                 self.portalLayer = cur_layer       
+            if self.CORE_LAYER in uri_table:
+                self.coreLayer = cur_layer
+            if self.PLOT_LAYER in uri_table:
+                self.plotLayer = cur_layer
                                 
     
     def getFullExtent(self):
@@ -287,12 +303,15 @@ class SearchPlus(QObject):
         self.dlg.cboStreet.currentIndexChanged.connect(self.getStreetNumbers)
         self.dlg.cboStreet.currentIndexChanged.connect(self.zoomOnStreet)
         self.dlg.cboType.currentIndexChanged.connect(self.getEquipments)
+        self.dlg.cboUrbanCore.currentIndexChanged.connect(self.getPlots)
+        self.dlg.cboUrbanCore.currentIndexChanged.connect(self.zoomOnCore)
         
         # add events to show information o the canvas
         self.dlg.cboNumber.currentIndexChanged.connect(self.displayStreetData)
         self.dlg.cboTopo.currentIndexChanged.connect(self.displayToponym)
         self.dlg.cboEquipment.currentIndexChanged.connect(self.displayEquipment)
         self.dlg.cboCadastre.currentIndexChanged.connect(self.displayCadastre)
+        self.dlg.cboPlot.currentIndexChanged.connect(self.displayPlot)
         self.dlg.txtCoordX.returnPressed.connect(self.displayUTM)
         self.dlg.txtCoordY.returnPressed.connect(self.displayUTM)
         
@@ -316,7 +335,10 @@ class SearchPlus(QObject):
         ''' Populate the interface with values get from layers
         '''       
         # Get layers and full extent
-        self.initialization()       
+        self.initialization() 
+
+        # tab Plots
+        self.populatePlots()      
                                
         # tab Cadastre
         self.populateCadastre()
@@ -453,8 +475,36 @@ class SearchPlus(QObject):
             record = records_sorted[i]
             self.dlg.cboStreet.addItem(record[1], record)
         self.dlg.cboStreet.blockSignals(False)    
-        
-                 
+
+    def populatePlots(self):
+        if self.plotLayer is None or self.coreLayer is None:
+            self.dlg.searchPlusTabMain.removeTab(4)
+            return
+
+        # Get layer features
+        layer = self.coreLayer
+        records = [(-1, '', '', '')]
+        idx_id = layer.fieldNameIndex('id')
+        idx_field_name = layer.fieldNameIndex(self.CORE_FIELD_NAME)
+        idx_field_code = layer.fieldNameIndex(self.CORE_FIELD_CODE)    
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            attrs = feature.attributes()
+            field_id = attrs[idx_id]    
+            field_name = attrs[idx_field_name]    
+            field_code = attrs[idx_field_code]  
+            if not type(field_code) is QPyNullVariant and geom is not None:
+                elem = [field_id, field_name, field_code, geom.exportToWkt()]
+                records.append(elem)
+
+        # Fill core combo
+        self.dlg.cboUrbanCore.blockSignals(True)
+        self.dlg.cboUrbanCore.clear()
+        records_sorted = sorted(records, key=operator.itemgetter(1))
+        for record in records_sorted:
+            self.dlg.cboUrbanCore.addItem(record[1], record)
+        self.dlg.cboUrbanCore.blockSignals(False)
+
     def zoomOnStreet(self):
         ''' Zoom on the street with the prefined scale
         '''
@@ -477,7 +527,26 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().setCenter(centroid.asPoint())
         self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale))
     
-    
+    def zoomOnCore(self):
+         # get selected core
+        selected = self.dlg.cboUrbanCore.currentText()
+        if selected == '':
+            return
+        
+        # get code
+        data = self.dlg.cboUrbanCore.itemData(self.dlg.cboUrbanCore.currentIndex())
+        wkt = data[3] # to know the index see the query that populate the combo
+        geom = QgsGeometry.fromWkt(wkt)
+        if not geom:
+            message = self.tr('Can not correctly get geometry')
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            return
+        
+        # zoom on it
+        self.iface.mapCanvas().setExtent(geom.boundingBox())
+        self.iface.mapCanvas().refresh()
+
+
     def getStreetNumbers(self):
         ''' Populate civic numbers depending on selected street. 
             Available civic numbers are linked with self.STREET_FIELD_CODE column code in self.PORTAL_LAYER
@@ -531,7 +600,61 @@ class SearchPlus(QObject):
         self.dlg.cboNumber.clear()
         for record in records_sorted:
             self.dlg.cboNumber.addItem(record[1], record)
-        self.dlg.cboNumber.blockSignals(False)  
+        self.dlg.cboNumber.blockSignals(False) 
+
+
+    def getPlots(self):
+        # get selected urban core
+        selected = self.dlg.cboUrbanCore.currentText()
+        if selected == '':
+            return
+        
+        # get urban core code
+        sel_core = self.dlg.cboUrbanCore.itemData(self.dlg.cboUrbanCore.currentIndex())
+        code = sel_core[2] # to know the index see the query that populate the combo
+        records = [[-1, '']]
+        
+        # Set filter expression
+        layer = self.plotLayer       
+        idx_field_code = layer.fieldNameIndex(self.PLOT_FIELD_CODE)            
+        idx_field_number = layer.fieldNameIndex(self.PLOT_FIELD_ADDRESS)   
+        idx_field_id = layer.fieldNameIndex('id')
+        aux = self.PLOT_FIELD_CODE+"='"+str(code)+"'" 
+        
+        # Check filter and existence of fields
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 10)        
+            return               
+        if idx_field_code == -1:    
+            message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
+                format(self.PLOT_FIELD_CODE, layer.name(), self.setting_file, 'PLOT_FIELD_CODE'))            
+            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            return      
+        if idx_field_number == -1:    
+            message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
+                format(self.PLOT_FIELD_ADDRESS, layer.name(), self.setting_file, 'PLOT_FIELD_ADDRESS'))            
+            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            return      
+            
+        # Get a featureIterator from an expression:
+        # Get features from the iterator and do something
+        it = layer.getFeatures(QgsFeatureRequest(expr))
+        for feature in it: 
+            attrs = feature.attributes() 
+            plot_id = attrs[idx_field_id]
+            field_number = attrs[idx_field_number]    
+            if not type(field_number) is QPyNullVariant:
+                elem = [plot_id, field_number]
+                records.append(elem)
+                  
+        # Fill numbers combo
+        records_sorted = sorted(records, key = operator.itemgetter(1))           
+        self.dlg.cboPlot.blockSignals(True)
+        self.dlg.cboPlot.clear()
+        for record in records_sorted:
+            self.dlg.cboPlot.addItem(record[1], record)
+        self.dlg.cboPlot.blockSignals(False) 
     
     
     def getEquipments(self):
@@ -613,6 +736,7 @@ class SearchPlus(QObject):
         self.manageMemLayer(self.cadastreMemLayer)
         self.manageMemLayer(self.equipmentMemLayer)
         self.manageMemLayer(self.portalMemLayer)
+        self.manageMemLayer(self.plotMemLayer)
       
     
     def copySelected(self, layer, mem_layer, geom_type):
@@ -870,7 +994,45 @@ class SearchPlus(QObject):
         
         # Load style
         self.loadStyle(self.portalMemLayer, self.QML_PORTAL)         
+    
+
+    def displayPlot(self):
+        core = self.dlg.cboUrbanCore.currentText()
+        plot = self.dlg.cboPlot.currentText()
+        if core == '' or plot == '':
+            return
         
+        # get selected item
+        elem = self.dlg.cboPlot.itemData(self.dlg.cboPlot.currentIndex())
+        if not elem:
+            # that means that user has edited manually the combo but the element
+            # does not correspond to any combo element
+            message = self.tr('Element {} does not exist'.format(equipment))
+            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            return
+
+        # select this feature in order to copy to memory layer        
+        aux = "id = "+str(elem[0])
+        expr = QgsExpression(aux)     
+        if expr.hasParserError():   
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            return    
+        
+        # Get a featureIterator from an expression
+        # Build a list of feature Ids from the previous result       
+        # Select features with the ids obtained             
+        it = self.plotLayer.getFeatures(QgsFeatureRequest(expr))
+        ids = [i.id() for i in it]
+        self.plotLayer.setSelectedFeatures(ids)
+        
+        # Copy selected features to memory layer          
+        self.plotMemLayer = self.copySelected(self.plotLayer, self.plotMemLayer, "Polygon")
+        
+        # Load style
+        self.loadStyle(self.plotMemLayer, self.QML_PLOT)          
+
+        # Zoom to scale
+        self.iface.mapCanvas().zoomScale(float(self.defaultZoomScale)) 
         
     def displayAnnotation(self, geom, message):
         ''' Display a specific message in the centroid of a specific geometry 

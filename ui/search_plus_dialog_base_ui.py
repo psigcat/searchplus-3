@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui/search_plus_dialog_base.ui'
+# Form implementation generated from reading ui file 'M:\PSIG\QGISplugins\searchplus\ui\search_plus_dialog_base.ui'
 #
-# Created: Wed Jul  1 12:08:49 2015
-#      by: PyQt4 UI code generator 4.11.2
+# Created by: PyQt4 UI code generator 4.11.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -137,6 +136,35 @@ class Ui_searchPlusDockWidget(object):
         self.cboCadastre.setObjectName(_fromUtf8("cboCadastre"))
         self.verticalLayout_5.addWidget(self.cboCadastre)
         self.searchPlusTabMain.addTab(self.searchPlusCadastreTab, _fromUtf8(""))
+        self.searchPlusPlotsTab = QtGui.QWidget()
+        self.searchPlusPlotsTab.setObjectName(_fromUtf8("searchPlusPlotsTab"))
+        self.verticalLayout_7 = QtGui.QVBoxLayout(self.searchPlusPlotsTab)
+        self.verticalLayout_7.setObjectName(_fromUtf8("verticalLayout_7"))
+        self.horizontalLayout_8 = QtGui.QHBoxLayout()
+        self.horizontalLayout_8.setObjectName(_fromUtf8("horizontalLayout_8"))
+        self.lblUrbanCore = QtGui.QLabel(self.searchPlusPlotsTab)
+        self.lblUrbanCore.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
+        self.lblUrbanCore.setObjectName(_fromUtf8("lblUrbanCore"))
+        self.horizontalLayout_8.addWidget(self.lblUrbanCore)
+        self.cboUrbanCore = SearchableComboBox(self.searchPlusPlotsTab)
+        self.cboUrbanCore.setEditable(True)
+        self.cboUrbanCore.setObjectName(_fromUtf8("cboUrbanCore"))
+        self.horizontalLayout_8.addWidget(self.cboUrbanCore)
+        self.horizontalLayout_8.setStretch(1, 1)
+        self.verticalLayout_7.addLayout(self.horizontalLayout_8)
+        self.horizontalLayout_9 = QtGui.QHBoxLayout()
+        self.horizontalLayout_9.setObjectName(_fromUtf8("horizontalLayout_9"))
+        self.lblPlot = QtGui.QLabel(self.searchPlusPlotsTab)
+        self.lblPlot.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
+        self.lblPlot.setObjectName(_fromUtf8("lblPlot"))
+        self.horizontalLayout_9.addWidget(self.lblPlot)
+        self.cboPlot = SearchableComboBox(self.searchPlusPlotsTab)
+        self.cboPlot.setEditable(True)
+        self.cboPlot.setObjectName(_fromUtf8("cboPlot"))
+        self.horizontalLayout_9.addWidget(self.cboPlot)
+        self.horizontalLayout_9.setStretch(1, 1)
+        self.verticalLayout_7.addLayout(self.horizontalLayout_9)
+        self.searchPlusTabMain.addTab(self.searchPlusPlotsTab, _fromUtf8(""))
         self.searchPlusUTMTab = QtGui.QWidget()
         self.searchPlusUTMTab.setObjectName(_fromUtf8("searchPlusUTMTab"))
         self.verticalLayout_6 = QtGui.QVBoxLayout(self.searchPlusUTMTab)
@@ -187,6 +215,9 @@ class Ui_searchPlusDockWidget(object):
         self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusEquipmentsTab), _translate("searchPlusDockWidget", "Equipaments", None))
         self.lblCadastre.setText(_translate("searchPlusDockWidget", "Introduïu la referència cadastral i premeu Acceptar (exemple: \'5123501DF1952S\'):", None))
         self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusCadastreTab), _translate("searchPlusDockWidget", "Cadastre", None))
+        self.lblUrbanCore.setText(_translate("searchPlusDockWidget", "Nucli urbà:", None))
+        self.lblPlot.setText(_translate("searchPlusDockWidget", "Parcel·la:", None))
+        self.searchPlusTabMain.setTabText(self.searchPlusTabMain.indexOf(self.searchPlusPlotsTab), _translate("searchPlusDockWidget", "Parcel·les", None))
         self.lblUTM.setText(_translate("searchPlusDockWidget", "Introduïu el parell de coordenades i premeu Acceptar (exemple: X \'415165\', Y \'4592355\'):", None))
         self.label_8.setText(_translate("searchPlusDockWidget", "X:", None))
         self.label_9.setText(_translate("searchPlusDockWidget", "Y:", None))

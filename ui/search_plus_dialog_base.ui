@@ -209,6 +209,55 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="searchPlusPlotsTab">
+       <attribute name="title">
+        <string>Parcel·les</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_7">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0,1">
+          <item>
+           <widget class="QLabel" name="lblUrbanCore">
+            <property name="text">
+             <string>Nucli urbà:</string>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="SearchableComboBox" name="cboUrbanCore">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="0,1">
+          <item>
+           <widget class="QLabel" name="lblPlot">
+            <property name="text">
+             <string>Parcel·la:</string>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="SearchableComboBox" name="cboPlot">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="searchPlusUTMTab">
        <attribute name="title">
         <string>UTM</string>
