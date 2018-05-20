@@ -22,21 +22,21 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
-class SearchableComboBox(QtGui.QComboBox):
+class SearchableComboBox(QtWidgets.QComboBox):
     def __init__(self, parent=None, **kwargs):
-        QtGui.QComboBox.__init__(self, parent, editable=True, focusPolicy=QtCore.Qt.StrongFocus, **kwargs)
+        QtWidgets.QComboBox.__init__(self, parent, editable=True, focusPolicy=QtCore.Qt.StrongFocus, **kwargs)
  
-        self._proxy=QtGui.QSortFilterProxyModel(self, filterCaseSensitivity=QtCore.Qt.CaseInsensitive)
+        self._proxy=QtCore.QSortFilterProxyModel(self, filterCaseSensitivity=QtCore.Qt.CaseInsensitive)
         self._proxy.setSourceModel(self.model())
  
-        self._completer=QtGui.QCompleter(
+        self._completer=QtWidgets.QCompleter(
             self._proxy,
             self,
             activated=self.onCompleterActivated
         )
-        self._completer.setCompletionMode(QtGui.QCompleter.UnfilteredPopupCompletion)
+        self._completer.setCompletionMode(QtWidgets.QCompleter.UnfilteredPopupCompletion)
         self.setCompleter(self._completer)
  
         self.lineEdit().textEdited.connect(self._proxy.setFilterFixedString)

@@ -14,8 +14,9 @@
  ***************************************************************************/
 """
 
-from PyQt4 import QtGui
-from ui.search_plus_dialog_base_ui import Ui_searchPlusDockWidget
+
+from qgis.PyQt.QtWidgets import QDockWidget
+from .ui.search_plus_dialog_base_ui import Ui_searchPlusDockWidget
 
 # cannot apply dynaic loading because cannot promote widget 
 # belongin to othe modules
@@ -25,7 +26,7 @@ from ui.search_plus_dialog_base_ui import Ui_searchPlusDockWidget
 #     os.path.dirname(__file__), 'ui', 'search_plus_dialog_base.ui'))
 # class SearchPlusDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
-class SearchPlusDockWidget(QtGui.QDockWidget, Ui_searchPlusDockWidget):
+class SearchPlusDockWidget(QDockWidget, Ui_searchPlusDockWidget):
     
     def __init__(self, parent=None):
         """Constructor."""
