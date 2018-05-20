@@ -20,14 +20,15 @@ import operator
 import os.path
 
 from qgis.utils import active_plugins
-from qgis.gui import QgsMessageBar, QgsTextAnnotationItem
-from qgis.core import QgsCredentials, QgsDataSourceURI, QgsGeometry, QgsPoint, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsMapLayerRegistry, QgsField, QgsProject, QgsLayerTreeLayer
-from PyQt4.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal, QPyNullVariant
-from PyQt4.QtGui import QAction, QIcon, QDockWidget, QTextDocument, QIntValidator
+from qgis.gui import QgsMessageBar
+from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPoint, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL
+from  qgis.PyQt.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
+from  qgis.PyQt.QtGui import  QIcon, QTextDocument, QIntValidator
+from  qgis.PyQt.QtWidgets import QAction, QDockWidget
 
-import resources_rc
-from utils import *  # @UnusedWildImport
-from search_plus_dockwidget import SearchPlusDockWidget
+from .resources_rc import *
+#from utils import *  # @UnusedWildImport
+from .search_plus_dockwidget import SearchPlusDockWidget
 
 
 class SearchPlus(QObject):
@@ -150,14 +151,16 @@ class SearchPlus(QObject):
             
     def getLayers(self): 
                                
-        # Iterate over all layers to get the ones set in config file   
-        layers = self.iface.legendInterface().layers()
-        for cur_layer in layers:     
+        # Iterate over all layers to get the ones set in config file  
+        layers = self.iface.mapCanvas().layers()
+        for cur_layer in layers:
             uri = cur_layer.dataProvider().dataSourceUri().lower()   
             pos_ini = uri.find('table=')
             pos_fi = uri.find('" ')  
-            uri_table = uri   
-            if pos_ini <> -1 and pos_fi <> -1:
+            uri_table = uri 
+            print(cur_layer.name())
+            print(uri_table)
+            if pos_ini != -1 and pos_fi != -1:
                 uri_table = uri[pos_ini+6:pos_fi+1]     
             if self.STREET_LAYER in uri_table:         
                 self.streetLayer = cur_layer
@@ -173,8 +176,8 @@ class SearchPlus(QObject):
                 self.coreLayer = cur_layer
             if self.PLOT_LAYER in uri_table:
                 self.plotLayer = cur_layer
-                                
-    
+
+        
     def getFullExtent(self):
                
         # get full extent
@@ -362,14 +365,14 @@ class SearchPlus(QObject):
         
         layer = self.cadastreLayer
         records = [(-1, '', '')]
-        idx_id = layer.fieldNameIndex('id')
-        idx_field_code = layer.fieldNameIndex(self.CADASTRE_FIELD_CODE)       
+        idx_id = layer.fields().indexFromName('id')
+        idx_field_code = layer.fields().indexFromName(self.CADASTRE_FIELD_CODE)       
         for feature in layer.getFeatures():
             geom = feature.geometry()
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is QPyNullVariant:
+            if not type(field_code) is NULL:
                 elem = [field_id, field_code, geom.exportToWkt()]
                 records.append(elem)
 
@@ -393,14 +396,14 @@ class SearchPlus(QObject):
         # Get layer features        
         layer = self.equipmentLayer
         records = ['']
-        idx_field_type = layer.fieldNameIndex(self.EQUIPMENT_FIELD_TYPE)       
+        idx_field_type = layer.fields().indexFromName(self.EQUIPMENT_FIELD_TYPE)  
         for feature in layer.getFeatures():
             attrs = feature.attributes()
-            field_type = attrs[idx_field_type]  
-            if not type(idx_field_type) is QPyNullVariant:
+            field_type = attrs[idx_field_type] 
+            if not type(idx_field_type) is NULL:
                 elem = field_type
                 records.append(elem)
- 
+                
         # Fill equipment type combo (remove duplicates)km
         records_set = list(set(records))
         records_sorted = records_set
@@ -410,8 +413,7 @@ class SearchPlus(QObject):
         for i in range(len(records_sorted)):
             record = records_sorted[i]
             self.dlg.cboType.addItem(record, record)
-        self.dlg.cboType.blockSignals(False)       
-                                   
+        self.dlg.cboType.blockSignals(False)                                
                 
     def populateToponyms(self):
                                 
@@ -423,14 +425,14 @@ class SearchPlus(QObject):
         # Get layer features        
         layer = self.placenameLayer
         records = [(-1, '', '')]
-        idx_id = layer.fieldNameIndex('id')
-        idx_field = layer.fieldNameIndex(self.PLACENAME_FIELD)       
+        idx_id = layer.fields().indexFromName('id')
+        idx_field = layer.fields().indexFromName(self.PLACENAME_FIELD)       
         for feature in layer.getFeatures():
             geom = feature.geometry()
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field = attrs[idx_field]  
-            if not type(field) is QPyNullVariant:
+            if not type(field) is NULL:
                 elem = [field_id, field, geom.exportToWkt()]
                 records.append(elem)
 
@@ -454,16 +456,16 @@ class SearchPlus(QObject):
         # Get layer features
         layer = self.streetLayer
         records = [(-1, '', '', '')]
-        idx_id = layer.fieldNameIndex('id')
-        idx_field_name = layer.fieldNameIndex(self.STREET_FIELD_NAME)
-        idx_field_code = layer.fieldNameIndex(self.STREET_FIELD_CODE)    
+        idx_id = layer.fields().indexFromName('id')
+        idx_field_name = layer.fields().indexFromName(self.STREET_FIELD_NAME)
+        idx_field_code = layer.fields().indexFromName(self.STREET_FIELD_CODE)    
         for feature in layer.getFeatures():
             geom = feature.geometry()
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is QPyNullVariant and geom is not None:
+            if not type(field_code) is NULL and geom is not None:
                 elem = [field_id, field_name, field_code, geom.exportToWkt()]
                 records.append(elem)
 
@@ -484,16 +486,16 @@ class SearchPlus(QObject):
         # Get layer features
         layer = self.coreLayer
         records = [(-1, '', '', '')]
-        idx_id = layer.fieldNameIndex('id')
-        idx_field_name = layer.fieldNameIndex(self.CORE_FIELD_NAME)
-        idx_field_code = layer.fieldNameIndex(self.CORE_FIELD_CODE)    
+        idx_id = layer.fields().indexFromName('id')
+        idx_field_name = layer.fields().indexFromName(self.CORE_FIELD_NAME)
+        idx_field_code = layer.fields().indexFromName(self.CORE_FIELD_CODE)    
         for feature in layer.getFeatures():
             geom = feature.geometry()
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is QPyNullVariant and geom is not None:
+            if not type(field_code) is NULL and geom is not None:
                 elem = [field_id, field_name, field_code, geom.exportToWkt()]
                 records.append(elem)
 
@@ -564,8 +566,8 @@ class SearchPlus(QObject):
         
         # Set filter expression
         layer = self.portalLayer       
-        idx_field_code = layer.fieldNameIndex(self.PORTAL_FIELD_CODE)            
-        idx_field_number = layer.fieldNameIndex(self.PORTAL_FIELD_NUMBER)   
+        idx_field_code = layer.fields().indexFromName(self.PORTAL_FIELD_CODE)            
+        idx_field_number = layer.fields().indexFromName(self.PORTAL_FIELD_NUMBER)   
         aux = self.PORTAL_FIELD_CODE+"='"+str(code)+"'" 
         
         # Check filter and existence of fields
@@ -590,7 +592,7 @@ class SearchPlus(QObject):
         for feature in it: 
             attrs = feature.attributes() 
             field_number = attrs[idx_field_number]    
-            if not type(field_number) is QPyNullVariant:
+            if not type(field_number) is NULL:
                 elem = [code, field_number]
                 records.append(elem)
                   
@@ -616,9 +618,9 @@ class SearchPlus(QObject):
         
         # Set filter expression
         layer = self.plotLayer       
-        idx_field_code = layer.fieldNameIndex(self.PLOT_FIELD_CODE)            
-        idx_field_number = layer.fieldNameIndex(self.PLOT_FIELD_ADDRESS)   
-        idx_field_id = layer.fieldNameIndex('id')
+        idx_field_code = layer.fields().indexFromName(self.PLOT_FIELD_CODE)            
+        idx_field_number = layer.fields().indexFromName(self.PLOT_FIELD_ADDRESS)   
+        idx_field_id = layer.fields().indexFromName('id')
         aux = self.PLOT_FIELD_CODE+"='"+str(code)+"'" 
         
         # Check filter and existence of fields
@@ -644,7 +646,7 @@ class SearchPlus(QObject):
             attrs = feature.attributes() 
             plot_id = attrs[idx_field_id]
             field_number = attrs[idx_field_number]    
-            if not type(field_number) is QPyNullVariant:
+            if not type(field_number) is NULL:
                 elem = [plot_id, field_number]
                 records.append(elem)
                   
@@ -673,9 +675,9 @@ class SearchPlus(QObject):
                 
         # Set filter expression
         layer = self.equipmentLayer
-        idx_id = layer.fieldNameIndex('id')            
-        idx_field_name = layer.fieldNameIndex(self.EQUIPMENT_FIELD_NAME)   
-        aux = self.EQUIPMENT_FIELD_TYPE+"='"+unicode(sel_type)+"'" 
+        idx_id = layer.fields().indexFromName('id')            
+        idx_field_name = layer.fields().indexFromName(self.EQUIPMENT_FIELD_NAME)   
+        aux = self.EQUIPMENT_FIELD_TYPE+"='"+u'{}'.format(sel_type)+"'" 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
             self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
@@ -688,10 +690,10 @@ class SearchPlus(QObject):
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
-            if not type(field_name) is QPyNullVariant:
+            if not type(field_name) is NULL:
                 elem = [field_id, field_name]
                 records.append(elem)
-                  
+                      
         # Fill numbers combo
         records_sorted = sorted(records, key = operator.itemgetter(1))           
         self.dlg.cboEquipment.blockSignals(True)
@@ -699,7 +701,7 @@ class SearchPlus(QObject):
         for record in records_sorted:
             self.dlg.cboEquipment.addItem(record[1], record)
         self.dlg.cboEquipment.blockSignals(False)  
-            
+
     
     def validateX(self):   
         X = int(self.dlg.txtCoordX.text())
@@ -725,8 +727,9 @@ class SearchPlus(QObject):
             it = layer.getFeatures()
             ids = [i.id() for i in it]
             layer.dataProvider().deleteFeatures(ids)    
-            layer.commitChanges()     
-            self.iface.legendInterface().setLayerVisible(layer, False)
+            layer.commitChanges()  
+            QgsProject.instance().layerTreeRoot().findLayer(layer.id()).setItemVisibilityChecked(False)
+            #self.iface.legendInterface().setLayerVisible(layer, False)
 
 
     def manageMemLayers(self):
@@ -754,7 +757,7 @@ class SearchPlus(QObject):
             names_list = attrib_names.toList()
             newattributeList = []
             for attrib in names_list:
-                aux = mem_layer.fieldNameIndex(attrib.name())
+                aux = mem_layer.fields().indexFromName(attrib.name())
                 if aux == -1:
                     newattributeList.append(QgsField(attrib.name(), attrib.type()))
             mem_layer.dataProvider().addAttributes(newattributeList)
@@ -762,7 +765,7 @@ class SearchPlus(QObject):
             
             # Insert layer in the top of the TOC           
             root = QgsProject.instance().layerTreeRoot()           
-            QgsMapLayerRegistry.instance().addMapLayer(mem_layer, False)
+            QgsProject.instance().addMapLayer(mem_layer, False)
             node_layer = QgsLayerTreeLayer(mem_layer)
             root.insertChildNode(0, node_layer)                 
      
@@ -786,7 +789,8 @@ class SearchPlus(QObject):
         self.iface.mapCanvas().zoomToSelected(layer)
         
         # Make sure layer is always visible 
-        self.iface.legendInterface().setLayerVisible(mem_layer, True)
+        QgsProject.instance().layerTreeRoot().findLayer(mem_layer.id()).setItemVisibilityChecked(True)
+        #self.iface.legendInterface().setLayerVisible(mem_layer, True)
                     
         return mem_layer
         
@@ -859,7 +863,7 @@ class SearchPlus(QObject):
         # Select features with the ids obtained             
         it = self.cadastreLayer.getFeatures(QgsFeatureRequest(expr))
         ids = [i.id() for i in it]
-        self.cadastreLayer.setSelectedFeatures(ids)    
+        self.cadastreLayer.selectByIds(ids)    
                 
         # Copy selected features to memory layer          
         self.cadastreMemLayer = self.copySelected(self.cadastreLayer, self.cadastreMemLayer, "Polygon")         
@@ -897,11 +901,11 @@ class SearchPlus(QObject):
         
         # Get a featureIterator from an expression
         # Build a list of feature Ids from the previous result       
-        # Select features with the ids obtained             
+        # Select features with the ids obtained      
         it = self.equipmentLayer.getFeatures(QgsFeatureRequest(expr))
         ids = [i.id() for i in it]
-        self.equipmentLayer.setSelectedFeatures(ids)
-        
+        self.equipmentLayer.selectByIds(ids)
+
         # Copy selected features to memory layer          
         self.equipmentMemLayer = self.copySelected(self.equipmentLayer, self.equipmentMemLayer, "Point")       
 
@@ -943,7 +947,7 @@ class SearchPlus(QObject):
         # Select features with the ids obtained       
         it = self.placenameLayer.getFeatures(QgsFeatureRequest(expr))
         ids = [i.id() for i in it]
-        self.placenameLayer.setSelectedFeatures(ids)    
+        self.placenameLayer.selectByIds(ids)    
                 
         # Copy selected features to memory layer
         self.placenameMemLayer = self.copySelected(self.placenameLayer, self.placenameMemLayer, "Linestring")
@@ -984,7 +988,7 @@ class SearchPlus(QObject):
         # Select featureswith the ids obtained             
         it = self.portalLayer.getFeatures(QgsFeatureRequest(expr))
         ids = [i.id() for i in it]
-        self.portalLayer.setSelectedFeatures(ids)
+        self.portalLayer.selectByIds(ids)
         
         # Copy selected features to memory layer     
         self.portalMemLayer = self.copySelected(self.portalLayer, self.portalMemLayer, "Point")       
@@ -997,6 +1001,7 @@ class SearchPlus(QObject):
     
 
     def displayPlot(self):
+        equipment = self.dlg.cboEquipment.currentText()
         core = self.dlg.cboUrbanCore.currentText()
         plot = self.dlg.cboPlot.currentText()
         if core == '' or plot == '':
@@ -1023,7 +1028,7 @@ class SearchPlus(QObject):
         # Select features with the ids obtained             
         it = self.plotLayer.getFeatures(QgsFeatureRequest(expr))
         ids = [i.id() for i in it]
-        self.plotLayer.setSelectedFeatures(ids)
+        self.plotLayer.selectByIds(ids)
         
         # Copy selected features to memory layer          
         self.plotMemLayer = self.copySelected(self.plotLayer, self.plotMemLayer, "Polygon")
@@ -1052,7 +1057,7 @@ class SearchPlus(QObject):
         
         # build annotation
         textDoc = QTextDocument(message)
-        item = QgsTextAnnotationItem(self.iface.mapCanvas())
+        item = QgsTextAnnotation(self.iface.mapCanvas())
         item.setMapPosition(centroid.asPoint())
         item.setFrameSize(textDoc.size())
         item.setDocument(textDoc)
@@ -1085,5 +1090,5 @@ class SearchPlus(QObject):
         for cur_layer in layers:     
             layer_name = cur_layer.name().lower()         
             if "selected_" in layer_name:
-                QgsMapLayerRegistry.instance().removeMapLayer(cur_layer.id())   
+                QgsProject.instance().removeMapLayer(cur_layer.id())   
                                              

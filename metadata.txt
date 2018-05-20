@@ -1,15 +1,24 @@
-# This file should be included when you package your plugin.
-# Mandatory items:
+# This file contains metadata for your plugin. Since 
+# version 2.0 of QGIS this is the proper way to supply 
+# information about a plugin. The old method of 
+# embedding metadata in __init__.py will 
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
 
 [general]
 name=searchplus
-qgisMinimumVersion=2.8
-description=searchplus is a Plugin to perform and define multiple searches.
-about=This plugin add a widget that allows searches on a street, place names, equipment, and others.
-version=0.3
-author=Luigi Pirelli, David Erill, Carlos Lopez (http://psig.es/)
-email=luipir@gmail.com
+qgisMinimumVersion=3.0
+description=nuse
+version=0.1
+author=yo
+email=al@ic
 
+about=Provide a brief description of the plugin and its purpose.
+
+tracker=http://bugs
+repository=http://repo
+# End of mandatory metadata
 
 # Recommended items:
 
@@ -17,16 +26,13 @@ email=luipir@gmail.com
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=toponomastic, search, street, catastre, coordinate
+tags=python
 
-homepage=https://github.com/psigcat/searchplus
-tracker=https://github.com/psigcat/searchplus/issues
-repository=https://github.com/psigcat/searchplus
+homepage=http://homepage
 category=Plugins
-icon=icon_searchplus.png
+icon=icon.png
 # experimental flag
 experimental=True
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
-
