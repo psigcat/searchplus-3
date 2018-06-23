@@ -21,7 +21,7 @@ import os.path
 
 from qgis.utils import active_plugins
 from qgis.gui import QgsMessageBar
-from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPoint, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL
+from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPointXY, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL
 from  qgis.PyQt.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
 from  qgis.PyQt.QtGui import  QIcon, QTextDocument, QIntValidator
 from  qgis.PyQt.QtWidgets import QAction, QDockWidget
@@ -158,8 +158,6 @@ class SearchPlus(QObject):
             pos_ini = uri.find('table=')
             pos_fi = uri.find('" ')  
             uri_table = uri 
-            print(cur_layer.name())
-            print(uri_table)
             if pos_ini != -1 and pos_fi != -1:
                 uri_table = uri[pos_ini+6:pos_fi+1]     
             if self.STREET_LAYER in uri_table:         
@@ -804,7 +802,8 @@ class SearchPlus(QObject):
         
     def displayUTM(self):
         ''' Show UTM location on the canvas when set it in the relative tab
-        '''                     
+        '''   
+        print('emtra aqui')                  
         X = self.dlg.txtCoordX.text()
         if not X:
             message = "Coordinate X not specified"
@@ -819,7 +818,7 @@ class SearchPlus(QObject):
         # check if coordinates are within the interval
         valX = self.validateX()
         if not valX:
-            message = "Coordinate X is out of the valid interval. It should be between "+str(self.xMinVal)+" and "+str(self.xMaxVal)
+            message = "Coordinate X is out of the valid interval. It should be between "+str(self.xMinVal)+" and "+str(self.xMaxVal)            
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return
         valY = self.validateY()
@@ -828,7 +827,7 @@ class SearchPlus(QObject):
             self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
             return            
             
-        geom = QgsGeometry.fromPoint(QgsPoint(float(X), float(Y)))
+        geom = QgsGeometry.fromPointXY(QgsPointXY(float(X), float(Y)))
         message = 'X: {}\nY: {}'.format(X,Y)
         
         # display annotation with message at a specified position
@@ -1061,7 +1060,8 @@ class SearchPlus(QObject):
         item.setMapPosition(centroid.asPoint())
         item.setFrameSize(textDoc.size())
         item.setDocument(textDoc)
-        item.update()
+        item.setVisible(True) 
+        #item.update()
         
         # add to annotations
         self.annotations.append(item)
