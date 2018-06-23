@@ -803,7 +803,7 @@ class SearchPlus(QObject):
     def displayUTM(self):
         ''' Show UTM location on the canvas when set it in the relative tab
         '''   
-        print('emtra aqui')                  
+                 
         X = self.dlg.txtCoordX.text()
         if not X:
             message = "Coordinate X not specified"
