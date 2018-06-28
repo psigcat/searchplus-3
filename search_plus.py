@@ -20,11 +20,11 @@ import operator
 import os.path
 
 from qgis.utils import active_plugins
-from qgis.gui import QgsMessageBar
+from qgis.gui import QgsMessageBar, QgsMapCanvasAnnotationItem 
 from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPointXY, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL
-from  qgis.PyQt.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
-from  qgis.PyQt.QtGui import  QIcon, QTextDocument, QIntValidator
-from  qgis.PyQt.QtWidgets import QAction, QDockWidget
+from qgis.PyQt.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
+from qgis.PyQt.QtGui import  QIcon, QTextDocument, QIntValidator
+from qgis.PyQt.QtWidgets import QAction, QDockWidget
 
 from .resources_rc import *
 #from utils import *  # @UnusedWildImport
@@ -1056,13 +1056,14 @@ class SearchPlus(QObject):
         
         # build annotation
         textDoc = QTextDocument(message)
-        item = QgsTextAnnotation(self.iface.mapCanvas())
+        item = QgsTextAnnotation.create()
         item.setMapPosition(centroid.asPoint())
         item.setFrameSize(textDoc.size())
         item.setDocument(textDoc)
-        item.setVisible(True) 
-        #item.update()
-        
+        item.setVisible(True)
+        QgsMapCanvasAnnotationItem(item,self.iface.mapCanvas())
+
+
         # add to annotations
         self.annotations.append(item)
         
