@@ -371,7 +371,7 @@ class SearchPlus(QObject):
             field_id = attrs[idx_id]    
             field_code = attrs[idx_field_code]  
             if not type(field_code) is NULL:
-                elem = [field_id, field_code, geom.exportToWkt()]
+                elem = [field_id, field_code, geom.asWkt()]
                 records.append(elem)
 
         # Fill cadastre combo
@@ -431,7 +431,7 @@ class SearchPlus(QObject):
             field_id = attrs[idx_id]    
             field = attrs[idx_field]  
             if not type(field) is NULL:
-                elem = [field_id, field, geom.exportToWkt()]
+                elem = [field_id, field, geom.asWkt()]
                 records.append(elem)
 
         # Fill toponym combo
@@ -464,7 +464,7 @@ class SearchPlus(QObject):
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
             if not type(field_code) is NULL and geom is not None:
-                elem = [field_id, field_name, field_code, geom.exportToWkt()]
+                elem = [field_id, field_name, field_code, geom.asWkt()]
                 records.append(elem)
 
         # Fill street combo
@@ -494,7 +494,7 @@ class SearchPlus(QObject):
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
             if not type(field_code) is NULL and geom is not None:
-                elem = [field_id, field_name, field_code, geom.exportToWkt()]
+                elem = [field_id, field_name, field_code, geom.asWkt()]
                 records.append(elem)
 
         # Fill core combo
