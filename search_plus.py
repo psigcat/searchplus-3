@@ -140,7 +140,7 @@ class SearchPlus(QObject):
             self.toolbar.setObjectName(u'SearchPlus')        
         
         # Enable action Remove Memory Layers?
-        self.removeMemoryLayersAction = bool(int(self.settings.value('status/removeMemoryLayersAction', 0)))
+        self.removeMemoryLayersAction = bool(int(self.settings.value('status/removeMemoryLayersAction', 1)))
 
 
     def initialization(self):
@@ -154,7 +154,7 @@ class SearchPlus(QObject):
         # Iterate over all layers to get the ones set in config file  
         layers = self.iface.mapCanvas().layers()
         for cur_layer in layers:
-            uri = cur_layer.dataProvider().dataSourceUri().lower()   
+            uri = cur_layer.dataProvider().dataSourceUri().lower()
             pos_ini = uri.find('table=')
             pos_fi = uri.find('" ')  
             uri_table = uri 
@@ -174,7 +174,6 @@ class SearchPlus(QObject):
                 self.coreLayer = cur_layer
             if self.PLOT_LAYER in uri_table:
                 self.plotLayer = cur_layer
-
         
     def getFullExtent(self):
                
@@ -370,17 +369,18 @@ class SearchPlus(QObject):
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is NULL:
+            if not (type(field_code) is NULL):
                 elem = [field_id, field_code, geom.asWkt()]
                 records.append(elem)
-
+        
         # Fill cadastre combo
         self.dlg.cboCadastre.blockSignals(True)
         self.dlg.cboCadastre.clear()
-        records_sorted = sorted(records, key = operator.itemgetter(1))            
+        records_sorted = sorted(records, key = operator.itemgetter(1))     
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            self.dlg.cboCadastre.addItem(record[1], record)
+            if record[1] != NULL:
+                self.dlg.cboCadastre.addItem(record[1], record)
         self.dlg.cboCadastre.blockSignals(False)   
    
    
@@ -398,7 +398,7 @@ class SearchPlus(QObject):
         for feature in layer.getFeatures():
             attrs = feature.attributes()
             field_type = attrs[idx_field_type] 
-            if not type(idx_field_type) is NULL:
+            if not (type(idx_field_type) is NULL):
                 elem = field_type
                 records.append(elem)
                 
@@ -410,7 +410,8 @@ class SearchPlus(QObject):
 #         records_sorted = sorted(records_set, key = operator.itemgetter(1))            
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            self.dlg.cboType.addItem(record, record)
+            if record != NULL:
+                self.dlg.cboType.addItem(record, record)
         self.dlg.cboType.blockSignals(False)                                
                 
     def populateToponyms(self):
@@ -430,7 +431,7 @@ class SearchPlus(QObject):
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field = attrs[idx_field]  
-            if not type(field) is NULL:
+            if not (type(field) is NULL):
                 elem = [field_id, field, geom.asWkt()]
                 records.append(elem)
 
@@ -440,7 +441,8 @@ class SearchPlus(QObject):
         records_sorted = sorted(records, key = operator.itemgetter(1))            
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            self.dlg.cboTopo.addItem(record[1], record)
+            if record[1] != NULL:
+                self.dlg.cboTopo.addItem(record[1], record)
         self.dlg.cboTopo.blockSignals(False)   
                         
                     
@@ -463,7 +465,7 @@ class SearchPlus(QObject):
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is NULL and geom is not None:
+            if (not (type(field_code) is NULL)) and geom is not None:
                 elem = [field_id, field_name, field_code, geom.asWkt()]
                 records.append(elem)
 
@@ -473,7 +475,8 @@ class SearchPlus(QObject):
         records_sorted = sorted(records, key = operator.itemgetter(1))            
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            self.dlg.cboStreet.addItem(record[1], record)
+            if record[1] != NULL:
+                self.dlg.cboStreet.addItem(record[1], record)
         self.dlg.cboStreet.blockSignals(False)    
 
     def populatePlots(self):
@@ -493,7 +496,7 @@ class SearchPlus(QObject):
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
             field_code = attrs[idx_field_code]  
-            if not type(field_code) is NULL and geom is not None:
+            if not (type(field_code) is NULL) and geom is not None:
                 elem = [field_id, field_name, field_code, geom.asWkt()]
                 records.append(elem)
 
@@ -502,7 +505,8 @@ class SearchPlus(QObject):
         self.dlg.cboUrbanCore.clear()
         records_sorted = sorted(records, key=operator.itemgetter(1))
         for record in records_sorted:
-            self.dlg.cboUrbanCore.addItem(record[1], record)
+            if record[1] != NULL:
+                self.dlg.cboUrbanCore.addItem(record[1], record)
         self.dlg.cboUrbanCore.blockSignals(False)
 
     def zoomOnStreet(self):
@@ -1082,12 +1086,12 @@ class SearchPlus(QObject):
                 return
             self.populateGui()       
             self.dlg.show()
-    
+
     
     def removeMemoryLayers(self):
         ''' Iterate over all layers and remove memory ones 
         '''         
-        layers = self.iface.legendInterface().layers()
+        layers = self.iface.mapCanvas().layers()
         for cur_layer in layers:     
             layer_name = cur_layer.name().lower()         
             if "selected_" in layer_name:
