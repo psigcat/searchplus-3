@@ -24,7 +24,7 @@ from qgis.gui import QgsMessageBar, QgsMapCanvasAnnotationItem
 from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPointXY, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL
 from qgis.PyQt.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
 from qgis.PyQt.QtGui import  QIcon, QTextDocument, QIntValidator
-from qgis.PyQt.QtWidgets import QAction, QDockWidget
+from qgis.PyQt.QtWidgets import QAction, QDockWidget, QMessageBox
 
 from .resources_rc import *
 #from utils import *  # @UnusedWildImport
@@ -89,6 +89,7 @@ class SearchPlus(QObject):
         self.coreLayer = None
         self.plotLayer = None
         self.plotMemLayer = None
+        self.scape=False
 
         self.iface.initializationCompleted.connect(self.populateGui) 
     
@@ -153,6 +154,13 @@ class SearchPlus(QObject):
                                
         # Iterate over all layers to get the ones set in config file  
         layers = self.iface.mapCanvas().layers()
+        
+        if layers ==[]: #show info message no layers 
+            QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr("No hay capas cargadas.\n Revisa la configuracion y recarga el plugin."))
+            self.scape=True
+            return
+    
         for cur_layer in layers:
             uri = cur_layer.dataProvider().dataSourceUri().lower()
             pos_ini = uri.find('table=')
@@ -1079,12 +1087,18 @@ class SearchPlus(QObject):
     
     def run(self):
         ''' Run method activated byt the toolbar action button 
-        '''         
+        '''    
+        
         if self.dlg and not self.dlg.isVisible():
             # check if the plugin is active
             if not self.pluginName in active_plugins:
                 return
-            self.populateGui()       
+            self.populateGui()  
+
+            if self.scape==1: #no layers no show
+                self.dlg.close()
+                return
+            
             self.dlg.show()
 
     
