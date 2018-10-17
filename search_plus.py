@@ -157,7 +157,7 @@ class SearchPlus(QObject):
         
         if layers ==[]: #show info message no layers 
             QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
-                                    self.tr("No hay capas cargadas.\n Revisa la configuracion y recarga el plugin."))
+                                    self.tr("No hay capas cargadas.\n Revisa la configuracion (o carga un proyecto)\n y recarga el plugin."))
             self.scape=True
             return
     
@@ -384,13 +384,23 @@ class SearchPlus(QObject):
         # Fill cadastre combo
         self.dlg.cboCadastre.blockSignals(True)
         self.dlg.cboCadastre.clear()
-        records_sorted = sorted(records, key = operator.itemgetter(1))     
+        records_sorted = sorted(records, key = operator.itemgetter(1)) 
+        error=[]
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            if record[1] != NULL:
+            if record[1] != NULL and type(record[1])==str:
                 self.dlg.cboCadastre.addItem(record[1], record)
-        self.dlg.cboCadastre.blockSignals(False)   
-   
+            else:
+                error.append(record[0])
+                
+        if error!=[]:
+            message='List of ids belonging to layer \'{}\' that can not be shown:\n'.format(self.cadastreLayer.name())
+            message+='{}'.format(error)
+            QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr(message))
+
+        self.dlg.cboCadastre.blockSignals(False)      
+    
    
     def populateEquipments(self):
                     
@@ -415,13 +425,24 @@ class SearchPlus(QObject):
         records_sorted = records_set
         self.dlg.cboType.blockSignals(True)
         self.dlg.cboType.clear()
-#         records_sorted = sorted(records_set, key = operator.itemgetter(1))            
+#         records_sorted = sorted(records_set, key = operator.itemgetter(1)) 
+        error=[]           
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            if record != NULL:
+            if record != NULL and type(record)==str:
                 self.dlg.cboType.addItem(record, record)
+            else:
+                error.append(record[0])
+        
+        if error!=[]:
+            message='List of ids belonging to layer \'{}\' that can not be shown:\n'.format(self.equipmentLayer.name())
+            message+='{}'.format(error)
+            QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr(message))        
+        
         self.dlg.cboType.blockSignals(False)                                
                 
+        
     def populateToponyms(self):
                                 
         # Check if we have this search option available
@@ -446,11 +467,21 @@ class SearchPlus(QObject):
         # Fill toponym combo
         self.dlg.cboTopo.blockSignals(True)
         self.dlg.cboTopo.clear()
-        records_sorted = sorted(records, key = operator.itemgetter(1))            
+        records_sorted = sorted(records, key = operator.itemgetter(1)) 
+        error=[]           
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            if record[1] != NULL:
+            if record[1] != NULL and type(record[1])==str:
                 self.dlg.cboTopo.addItem(record[1], record)
+            else:
+                error.append(record[0])
+                
+        if error!=[]:
+            message='List of ids belonging to layer \'{}\' that can not be shown:\n'.format(self.placenameLayer.name())
+            message+='{}'.format(error)
+            QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr(message))                 
+                
         self.dlg.cboTopo.blockSignals(False)   
                         
                     
@@ -480,11 +511,22 @@ class SearchPlus(QObject):
         # Fill street combo
         self.dlg.cboStreet.blockSignals(True)
         self.dlg.cboStreet.clear()
-        records_sorted = sorted(records, key = operator.itemgetter(1))            
+        records_sorted = sorted(records, key = operator.itemgetter(1)) 
+
+        error=[]
         for i in range(len(records_sorted)):
             record = records_sorted[i]
-            if record[1] != NULL:
+            if record[1] != NULL and type(record[1])==str:
                 self.dlg.cboStreet.addItem(record[1], record)
+            else:
+                error.append(record[0])
+        
+        if error!=[]:
+            message='List of ids belonging to layer \'{}\' that can not be shown:\n'.format(self.streetLayer.name())
+            message+='{}'.format(error)
+            QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr(message))
+                
         self.dlg.cboStreet.blockSignals(False)    
 
     def populatePlots(self):
@@ -512,9 +554,19 @@ class SearchPlus(QObject):
         self.dlg.cboUrbanCore.blockSignals(True)
         self.dlg.cboUrbanCore.clear()
         records_sorted = sorted(records, key=operator.itemgetter(1))
+        error=[]
         for record in records_sorted:
-            if record[1] != NULL:
+            if record[1] != NULL and type(record[1])==str:
                 self.dlg.cboUrbanCore.addItem(record[1], record)
+            else:
+                error.append(record[0])
+                
+        if error!=[]:
+            message='List of ids belonging to layer \'{}\' that can not be shown:\n'.format(self.coreLayer.name())
+            message+='{}'.format(error)
+            QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr(message))
+            
         self.dlg.cboUrbanCore.blockSignals(False)
 
     def zoomOnStreet(self):
@@ -815,6 +867,10 @@ class SearchPlus(QObject):
     def displayUTM(self):
         ''' Show UTM location on the canvas when set it in the relative tab
         '''   
+        #Obtain the geometry of the Terme_municipal layer
+        select=QgsProject.instance().mapLayersByName('Terme municipal')
+        if select!=[]:
+            layer=select[0].getFeatures() #acces to the layer
                  
         X = self.dlg.txtCoordX.text()
         if not X:
@@ -840,8 +896,24 @@ class SearchPlus(QObject):
             return            
             
         geom = QgsGeometry.fromPointXY(QgsPointXY(float(X), float(Y)))
-        message = 'X: {}\nY: {}'.format(X,Y)
         
+        #check if the geometry is inside the Terme municipal poligon
+        if select!=[]:
+            inters=False
+            for feature in layer:
+                if feature.geometry().intersects(geom):
+                    inters=True
+                    break
+            
+            if inters:
+                message = 'X: {}\nY: {}'.format(X,Y)
+            else:
+                message='Points X:{} and Y:{} outside the Terme municipal.'.format(X,Y)
+                QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
+                                    self.tr(message))                
+                return
+        else:
+            message = 'X: {}\nY: {}'.format(X,Y)
         # display annotation with message at a specified position
         self.displayAnnotation(geom, message)
     
