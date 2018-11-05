@@ -901,14 +901,14 @@ class SearchPlus(QObject):
         if select!=[]:
             inters=False
             for feature in layer:
-                if feature.geometry().intersects(geom):
+                if feature.geometry().buffer(50000,-1).intersects(geom): #añadido un buffer de 50Km 
                     inters=True
                     break
             
             if inters:
                 message = 'X: {}\nY: {}'.format(X,Y)
             else:
-                message='Points X:{} and Y:{} outside the Terme municipal.'.format(X,Y)
+                message='Points X:{} and Y:{} outside the Terme municipal (and the 50 Km buffer).'.format(X,Y)
                 QMessageBox.information(self.iface.mainWindow(), self.tr("Searchplus-Informacion"),
                                     self.tr(message))                
                 return
