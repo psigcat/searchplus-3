@@ -118,12 +118,12 @@ class SearchPlus(QObject):
         self.CADASTRE_FIELD_CODE = self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
 
         self.CORE_LAYER = '"'+self.settings.value('layers/CORE_LAYER', '').lower()+'"'
-        self.CORE_FIELD_CODE = '"'+self.settings.value('layers/CORE_FIELD_CODE', '').lower()+'"'
-        self.CORE_FIELD_NAME = '"'+self.settings.value('layers/CORE_FIELD_NAME', '').lower()+'"'
+        self.CORE_FIELD_CODE = self.settings.value('layers/CORE_FIELD_CODE', '').lower()
+        self.CORE_FIELD_NAME = self.settings.value('layers/CORE_FIELD_NAME', '').lower()
 
         self.PLOT_LAYER = '"'+self.settings.value('layers/PLOT_LAYER', '').lower()+'"'
-        self.PLOT_FIELD_CODE = '"'+self.settings.value('layers/PLOT_FIELD_CODE', '').lower()+'"'
-        self.PLOT_FIELD_ADDRESS = '"'+self.settings.value('layers/PLOT_FIELD_ADDRESS', '').lower()+'"'
+        self.PLOT_FIELD_CODE = self.settings.value('layers/PLOT_FIELD_CODE', '').lower()
+        self.PLOT_FIELD_ADDRESS = self.settings.value('layers/PLOT_FIELD_ADDRESS', '').lower()
 
         self.QML_PORTAL = self.settings.value('layers/QML_PORTAL', 'portal.qml').lower()
         self.QML_TOPONYM = self.settings.value('layers/QML_TOPONYM', 'toponym.qml').lower()
@@ -167,7 +167,7 @@ class SearchPlus(QObject):
             pos_fi = uri.find('" ')  
             uri_table = uri 
             if pos_ini != -1 and pos_fi != -1:
-                uri_table = uri[pos_ini+6:pos_fi+1]     
+                uri_table = uri[pos_ini+6:pos_fi+1]          
             if self.STREET_LAYER in uri_table:         
                 self.streetLayer = cur_layer
             if self.PLACENAME_LAYER in uri_table:
@@ -182,6 +182,7 @@ class SearchPlus(QObject):
                 self.coreLayer = cur_layer
             if self.PLOT_LAYER in uri_table:
                 self.plotLayer = cur_layer
+
         
     def getFullExtent(self):
                
@@ -539,7 +540,8 @@ class SearchPlus(QObject):
         records = [(-1, '', '', '')]
         idx_id = layer.fields().indexFromName('id')
         idx_field_name = layer.fields().indexFromName(self.CORE_FIELD_NAME)
-        idx_field_code = layer.fields().indexFromName(self.CORE_FIELD_CODE)    
+        idx_field_code = layer.fields().indexFromName(self.CORE_FIELD_CODE)  
+        
         for feature in layer.getFeatures():
             geom = feature.geometry()
             attrs = feature.attributes()
@@ -553,9 +555,9 @@ class SearchPlus(QObject):
         # Fill core combo
         self.dlg.cboUrbanCore.blockSignals(True)
         self.dlg.cboUrbanCore.clear()
-        records_sorted = sorted(records, key=operator.itemgetter(1))
+        #records_sorted = sorted(records, key=operator.itemgetter(1))
         error=[]
-        for record in records_sorted:
+        for record in records:#_sorted:
             if record[1] != NULL and type(record[1])==str:
                 self.dlg.cboUrbanCore.addItem(record[1], record)
             else:
@@ -679,11 +681,11 @@ class SearchPlus(QObject):
         records = [[-1, '']]
         
         # Set filter expression
-        layer = self.plotLayer       
+        layer = self.plotLayer 
         idx_field_code = layer.fields().indexFromName(self.PLOT_FIELD_CODE)            
         idx_field_number = layer.fields().indexFromName(self.PLOT_FIELD_ADDRESS)   
         idx_field_id = layer.fields().indexFromName('id')
-        aux = self.PLOT_FIELD_CODE+"='"+str(code)+"'" 
+        aux = self.PLOT_FIELD_CODE+'=\''+str(code)+'\'' 
         
         # Check filter and existence of fields
         expr = QgsExpression(aux)     
@@ -694,30 +696,30 @@ class SearchPlus(QObject):
             message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
                 format(self.PLOT_FIELD_CODE, layer.name(), self.setting_file, 'PLOT_FIELD_CODE'))            
             self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
-            return      
+            return   
+        '''
         if idx_field_number == -1:    
             message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
                 format(self.PLOT_FIELD_ADDRESS, layer.name(), self.setting_file, 'PLOT_FIELD_ADDRESS'))            
             self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
             return      
-            
+        '''    
         # Get a featureIterator from an expression:
         # Get features from the iterator and do something
-        it = layer.getFeatures(QgsFeatureRequest(expr))
+        it = layer.getFeatures(QgsFeatureRequest().setFilterExpression(aux))
         for feature in it: 
             attrs = feature.attributes() 
             plot_id = attrs[idx_field_id]
-            field_number = attrs[idx_field_number]    
+            field_number = attrs[idx_field_code]    
             if not type(field_number) is NULL:
-                elem = [plot_id, field_number]
+                elem = [plot_id, plot_id]
                 records.append(elem)
-                  
         # Fill numbers combo
-        records_sorted = sorted(records, key = operator.itemgetter(1))           
+        records_sorted = sorted(records)#, key = operator.itemgetter(2))          
         self.dlg.cboPlot.blockSignals(True)
         self.dlg.cboPlot.clear()
         for record in records_sorted:
-            self.dlg.cboPlot.addItem(record[1], record)
+            self.dlg.cboPlot.addItem(str(record[1]), record)
         self.dlg.cboPlot.blockSignals(False) 
     
     
