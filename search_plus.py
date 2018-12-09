@@ -785,11 +785,11 @@ class SearchPlus(QObject):
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
             if (not type(field_name) is NULL) and field_name not in chk_number:
-                chk_number.append(field_number)
+                chk_number.append(field_name)
                 elem = [field_id, field_name]
                 records.append(elem)
             else: 
-                error.append(field_number)
+                error.append(field_name)
          
         chk_number=[]
         if error !=[]:
