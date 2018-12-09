@@ -19,9 +19,10 @@ from __future__ import unicode_literals, division, print_function
 import operator
 import os.path
 
+
 from qgis.utils import active_plugins
 from qgis.gui import QgsMessageBar, QgsMapCanvasAnnotationItem 
-from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPointXY, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL
+from qgis.core import QgsCredentials, QgsDataSourceUri, QgsGeometry, QgsPointXY, QgsMessageLog, QgsExpression, QgsFeatureRequest, QgsVectorLayer, QgsFeature, QgsField, QgsProject, QgsLayerTreeLayer, QgsTextAnnotation, NULL, Qgis
 from qgis.PyQt.QtCore import QObject, QSettings, QTranslator, qVersion, QCoreApplication, Qt, pyqtSignal
 from qgis.PyQt.QtGui import  QIcon, QTextDocument, QIntValidator
 from qgis.PyQt.QtWidgets import QAction, QDockWidget, QMessageBox
@@ -65,7 +66,7 @@ class SearchPlus(QObject):
         self.setting_file = os.path.join(self.plugin_dir, 'config', self.app_name+'.config')
         if not os.path.isfile(self.setting_file):
             message = "Config file not found at: "+self.setting_file            
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)            
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)            
             return False        
         self.settings = QSettings(self.setting_file, QSettings.IniFormat)
         self.stylesFolder = self.plugin_dir+"/styles/" 
@@ -585,7 +586,7 @@ class SearchPlus(QObject):
         geom = QgsGeometry.fromWkt(wkt)
         if not geom:
             message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
         
         # zoom on it's centroid
@@ -605,7 +606,7 @@ class SearchPlus(QObject):
         geom = QgsGeometry.fromWkt(wkt)
         if not geom:
             message = self.tr('Can not correctly get geometry')
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
         
         # zoom on it
@@ -625,7 +626,8 @@ class SearchPlus(QObject):
         
         # get street code
         sel_street = self.dlg.cboStreet.itemData(self.dlg.cboStreet.currentIndex())
-        code = sel_street[2] # to know the index see the query that populate the combo
+        
+        code = sel_street[2] # to know the index see the query that populate the combo 
         records = [[-1, '']]
         
         # Set filter expression
@@ -637,28 +639,41 @@ class SearchPlus(QObject):
         # Check filter and existence of fields
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 10)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 10)        
             return               
         if idx_field_code == -1:    
             message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
                 format(self.PORTAL_FIELD_CODE, layer.name(), self.setting_file, 'PORTAL_FIELD_CODE'))            
-            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)        
             return      
         if idx_field_number == -1:    
             message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
                 format(self.PORTAL_FIELD_NUMBER, layer.name(), self.setting_file, 'PORTAL_FIELD_NUMBER'))            
-            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)        
             return      
             
         # Get a featureIterator from an expression:
         # Get features from the iterator and do something
+        chk_number=[] #list to avoid duplicate numbers in the same code
+        error=[] #list to store the duplicate elements
         it = layer.getFeatures(QgsFeatureRequest(expr))
         for feature in it: 
             attrs = feature.attributes() 
             field_number = attrs[idx_field_number]    
-            if not type(field_number) is NULL:
+            if (not type(field_number) is NULL) and (field_number not in chk_number):
+                chk_number.append(field_number)
                 elem = [code, field_number]
                 records.append(elem)
+            else:
+                error.append(field_number)
+        
+        chk_number=[]
+        if error !=[]:
+            message = self.tr('Layer {} has duplicated elements in the field {}\n'.format(layer.name(),self.PORTAL_FIELD_NUMBER))
+            message+=self.tr('List of duplicates {}:{}'.format(self.PORTAL_FIELD_NUMBER,error))          
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)
+            error=[]            
+            return
                   
         # Fill numbers combo
         records_sorted = sorted(records, key = operator.itemgetter(1))           
@@ -690,30 +705,43 @@ class SearchPlus(QObject):
         # Check filter and existence of fields
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 10)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 10)        
             return               
         if idx_field_code == -1:    
             message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
                 format(self.PLOT_FIELD_CODE, layer.name(), self.setting_file, 'PLOT_FIELD_CODE'))            
-            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)        
             return   
-        '''
         if idx_field_number == -1:    
             message = self.tr("Field '{}' not found in layer '{}'. Open '{}' and check parameter '{}'".
                 format(self.PLOT_FIELD_ADDRESS, layer.name(), self.setting_file, 'PLOT_FIELD_ADDRESS'))            
-            self.iface.messageBar().pushMessage(message, '', QgsMessageBar.WARNING)        
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)        
             return      
-        '''    
+    
         # Get a featureIterator from an expression:
         # Get features from the iterator and do something
+        chk_number=[] #list to avoid duplicate numbers in the same code
+        error=[] #list to store the duplicate elements
         it = layer.getFeatures(QgsFeatureRequest().setFilterExpression(aux))
         for feature in it: 
             attrs = feature.attributes() 
             plot_id = attrs[idx_field_id]
             field_number = attrs[idx_field_code]    
-            if not type(field_number) is NULL:
+            if (not (type(field_number) is NULL)) and field_number not in chk_number:
+                chk_number.append(field_number)
                 elem = [plot_id, plot_id]
                 records.append(elem)
+            else:
+                error.append(field_number)
+        
+        chk_number=[]
+        if error !=[]:
+            message = self.tr('Layer {} has duplicated elements in the field {}\n'.format(layer.name(),self.PORTAL_FIELD_ADDRESS))
+            message+=self.tr('List of duplicates {}:{}'.format(self.PLOT_FIELD_ADDRESS,error))          
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)
+            error=[]            
+            return
+        
         # Fill numbers combo
         records_sorted = sorted(records)#, key = operator.itemgetter(2))          
         self.dlg.cboPlot.blockSignals(True)
@@ -744,20 +772,33 @@ class SearchPlus(QObject):
         aux = self.EQUIPMENT_FIELD_TYPE+"='"+u'{}'.format(sel_type)+"'" 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
             return               
         
         # Get a featureIterator from an expression:
         # Get features from the iterator and do something
+        chk_number=[] #list to avoid duplicate numbers in the same code
+        error=[] #list to store the duplicate elements
         it = layer.getFeatures(QgsFeatureRequest(expr))
         for feature in it: 
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
-            if not type(field_name) is NULL:
+            if (not type(field_name) is NULL) and field_name not in chk_number:
+                chk_number.append(field_number)
                 elem = [field_id, field_name]
                 records.append(elem)
-                      
+            else: 
+                error.append(field_number)
+         
+        chk_number=[]
+        if error !=[]:
+            message = self.tr('Layer {} has duplicated elements in the field {}\n'.format(layer.name(),self.EQUIPMENT_FIELD_NAME))
+            message+=self.tr('List of duplicates {}:{}'.format(self.EQUIPMENT_FIELD_NAME,error))          
+            self.iface.messageBar().pushMessage(message, '', Qgis.Warning, 10)
+            error=[]            
+            return    
+         
         # Fill numbers combo
         records_sorted = sorted(records, key = operator.itemgetter(1))           
         self.dlg.cboEquipment.blockSignals(True)
@@ -877,24 +918,24 @@ class SearchPlus(QObject):
         X = self.dlg.txtCoordX.text()
         if not X:
             message = "Coordinate X not specified"
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
         Y = self.dlg.txtCoordY.text()  
         if not Y:
             message = "Coordinate Y not specified"
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)           
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)           
             return
         
         # check if coordinates are within the interval
         valX = self.validateX()
         if not valX:
             message = "Coordinate X is out of the valid interval. It should be between "+str(self.xMinVal)+" and "+str(self.xMaxVal)            
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
         valY = self.validateY()
         if not valY:
             message = "Coordinate Y is out of the valid interval, It should be between "+str(self.yMinVal)+" and "+str(self.yMaxVal)
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return            
             
         geom = QgsGeometry.fromPointXY(QgsPointXY(float(X), float(Y)))
@@ -933,14 +974,14 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(cadastre))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
         
         # select this feature in order to copy to memory layer        
         aux = "id = "+str(elem[0]) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -974,14 +1015,14 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(equipment))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
 
         # select this feature in order to copy to memory layer        
         aux = "id = "+str(elem[0]) 
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -1017,14 +1058,14 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(toponym))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
 
         # select this feature in order to copy to memory layer        
         aux = "id = "+str(elem[0])         
         expr = QgsExpression(aux)            
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -1058,14 +1099,14 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(civic))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
         
         # select this feature in order to copy to memory layer        
         aux = self.PORTAL_FIELD_CODE+"='"+str(elem[0])+"' AND "+self.PORTAL_FIELD_NUMBER+"='"+str(elem[1])+"'"
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
             return    
         
         # Get a featureIterator from an expression
@@ -1098,14 +1139,14 @@ class SearchPlus(QObject):
             # that means that user has edited manually the combo but the element
             # does not correspond to any combo element
             message = self.tr('Element {} does not exist'.format(equipment))
-            self.iface.messageBar().pushMessage(message, QgsMessageBar.WARNING, 5)
+            self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
 
         # select this feature in order to copy to memory layer        
         aux = "id = "+str(elem[0])
         expr = QgsExpression(aux)     
         if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, QgsMessageBar.WARNING, 5)        
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
             return    
         
         # Get a featureIterator from an expression
