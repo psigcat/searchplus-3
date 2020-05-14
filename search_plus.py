@@ -99,38 +99,38 @@ class SearchPlus(QObject):
         ''' Load plugin settings
         '''           
         # get layers configuration to populate the GUI
-        self.STREET_LAYER = '"'+self.settings.value('layers/STREET_LAYER', '').lower()+'"'
-        self.STREET_FIELD_CODE = self.settings.value('layers/STREET_FIELD_CODE', '').lower()
-        self.STREET_FIELD_NAME = self.settings.value('layers/STREET_FIELD_NAME', '').lower()
+        self.STREET_LAYER = ''+self.settings.value('layers/STREET_LAYER', '')+''
+        self.STREET_FIELD_CODE = self.settings.value('layers/STREET_FIELD_CODE', '')
+        self.STREET_FIELD_NAME = self.settings.value('layers/STREET_FIELD_NAME', '')
         
-        self.PORTAL_LAYER = '"'+self.settings.value('layers/PORTAL_LAYER', '').lower()+'"'
-        self.PORTAL_FIELD_CODE = self.settings.value('layers/PORTAL_FIELD_CODE', '').lower()
-        self.PORTAL_FIELD_NUMBER = self.settings.value('layers/PORTAL_FIELD_NUMBER', '').lower()
+        self.PORTAL_LAYER = ''+self.settings.value('layers/PORTAL_LAYER', '')+''
+        self.PORTAL_FIELD_CODE = self.settings.value('layers/PORTAL_FIELD_CODE', '')
+        self.PORTAL_FIELD_NUMBER = self.settings.value('layers/PORTAL_FIELD_NUMBER', '')
         
-        self.PLACENAME_LAYER = '"'+self.settings.value('layers/PLACENAME_LAYER', '').lower()+'"'
-        self.PLACENAME_FIELD = self.settings.value('layers/PLACENAME_FIELD', '').lower()
+        self.PLACENAME_LAYER = ''+self.settings.value('layers/PLACENAME_LAYER', '')+''
+        self.PLACENAME_FIELD = self.settings.value('layers/PLACENAME_FIELD', '')
         
-        self.EQUIPMENT_SCHEMA = '"'+self.settings.value('layers/EQUIPMENT_SCHEMA', '').lower()+'"'
-        self.EQUIPMENT_LAYER = '"'+self.settings.value('layers/EQUIPMENT_LAYER', '').lower()+'"'
-        self.EQUIPMENT_FIELD_TYPE = self.settings.value('layers/EQUIPMENT_FIELD_TYPE', '').lower()
-        self.EQUIPMENT_FIELD_NAME = self.settings.value('layers/EQUIPMENT_FIELD_NAME', '').lower()
+        self.EQUIPMENT_SCHEMA = ''+self.settings.value('layers/EQUIPMENT_SCHEMA', '')+''
+        self.EQUIPMENT_LAYER = ''+self.settings.value('layers/EQUIPMENT_LAYER', '')+''
+        self.EQUIPMENT_FIELD_TYPE = self.settings.value('layers/EQUIPMENT_FIELD_TYPE', '')
+        self.EQUIPMENT_FIELD_NAME = self.settings.value('layers/EQUIPMENT_FIELD_NAME', '')
         
-        self.CADASTRE_LAYER = '"'+self.settings.value('layers/CADASTRE_LAYER', '').lower()+'"'
-        self.CADASTRE_FIELD_CODE = self.settings.value('layers/CADASTRE_FIELD_CODE', '').lower()
+        self.CADASTRE_LAYER = ''+self.settings.value('layers/CADASTRE_LAYER', '')+''
+        self.CADASTRE_FIELD_CODE = self.settings.value('layers/CADASTRE_FIELD_CODE', '')
 
-        self.CORE_LAYER = '"'+self.settings.value('layers/CORE_LAYER', '').lower()+'"'
-        self.CORE_FIELD_CODE = self.settings.value('layers/CORE_FIELD_CODE', '').lower()
-        self.CORE_FIELD_NAME = self.settings.value('layers/CORE_FIELD_NAME', '').lower()
+        self.CORE_LAYER = ''+self.settings.value('layers/CORE_LAYER', '')+''
+        self.CORE_FIELD_CODE = self.settings.value('layers/CORE_FIELD_CODE', '')
+        self.CORE_FIELD_NAME = self.settings.value('layers/CORE_FIELD_NAME', '')
 
-        self.PLOT_LAYER = '"'+self.settings.value('layers/PLOT_LAYER', '').lower()+'"'
-        self.PLOT_FIELD_CODE = self.settings.value('layers/PLOT_FIELD_CODE', '').lower()
-        self.PLOT_FIELD_ADDRESS = self.settings.value('layers/PLOT_FIELD_ADDRESS', '').lower()
+        self.PLOT_LAYER = ''+self.settings.value('layers/PLOT_LAYER', '')+''
+        self.PLOT_FIELD_CODE = self.settings.value('layers/PLOT_FIELD_CODE', '')
+        self.PLOT_FIELD_ADDRESS = self.settings.value('layers/PLOT_FIELD_ADDRESS', '')
 
-        self.QML_PORTAL = self.settings.value('layers/QML_PORTAL', 'portal.qml').lower()
-        self.QML_TOPONYM = self.settings.value('layers/QML_TOPONYM', 'toponym.qml').lower()
-        self.QML_EQUIPMENT = self.settings.value('layers/QML_EQUIPMENT', 'equipment.qml').lower()
-        self.QML_CADASTRE = self.settings.value('layers/QML_CADASTRE', 'cadastre.qml').lower()
-        self.QML_PLOT = self.settings.value('layers/QML_PLOT', 'plot.qml').lower()
+        self.QML_PORTAL = self.settings.value('layers/QML_PORTAL', 'portal.qml')
+        self.QML_TOPONYM = self.settings.value('layers/QML_TOPONYM', 'toponym.qml')
+        self.QML_EQUIPMENT = self.settings.value('layers/QML_EQUIPMENT', 'equipment.qml')
+        self.QML_CADASTRE = self.settings.value('layers/QML_CADASTRE', 'cadastre.qml')
+        self.QML_PLOT = self.settings.value('layers/QML_PLOT', 'plot.qml')
         
         # get initial Scale
         self.defaultZoomScale = self.settings.value('status/defaultZoomScale', 2500)
@@ -161,24 +161,32 @@ class SearchPlus(QObject):
                                     self.tr("No hay capas cargadas.\n Revisa la configuracion (o carga un proyecto)\n y recarga el plugin."))
             self.scape=True
             return
-    
         for cur_layer in layers:
             uri = cur_layer.dataProvider().dataSourceUri().lower()
             pos_ini = uri.find('table=')
-            pos_fi = uri.find('" ')  
-            uri_table = uri 
+            pos_fi = uri.find('" ')
             if pos_ini != -1 and pos_fi != -1:
-                uri_table = uri[pos_ini+6:pos_fi+1]          
-            if self.STREET_LAYER in uri_table:         
+                uri_table = uri[pos_ini + 6:pos_fi + 1]
+            else:
+                # Using current layer_name on TOC
+                uri_table = cur_layer.name()
+
+            if self.STREET_LAYER in uri_table:
                 self.streetLayer = cur_layer
+
+
             if self.PLACENAME_LAYER in uri_table:
-                self.placenameLayer = cur_layer     
+                self.placenameLayer = cur_layer
             if self.CADASTRE_LAYER in uri_table:
-                self.cadastreLayer = cur_layer   
+                self.cadastreLayer = cur_layer
+
+
             if self.EQUIPMENT_LAYER in uri_table:
-                self.equipmentLayer = cur_layer  
+                self.equipmentLayer = cur_layer
             if self.PORTAL_LAYER in uri_table:
-                self.portalLayer = cur_layer       
+                self.portalLayer = cur_layer
+
+
             if self.CORE_LAYER in uri_table:
                 self.coreLayer = cur_layer
             if self.PLOT_LAYER in uri_table:
@@ -364,12 +372,15 @@ class SearchPlus(QObject):
 
             
     def populateCadastre(self):
-                    
+
         # Check if we have this search option available
         if self.cadastreLayer is None:
-            self.dlg.searchPlusTabMain.removeTab(3)  
+            for x in range(0,  self.dlg.searchPlusTabMain.count()):
+                if  self.dlg.searchPlusTabMain.widget(x).objectName() == "searchPlusCadastreTab":
+                    self.dlg.searchPlusTabMain.removeTab(x)
+                    break
             return      
-        
+
         layer = self.cadastreLayer
         records = [(-1, '', '')]
         idx_id = layer.fields().indexFromName('id')
@@ -405,10 +416,13 @@ class SearchPlus(QObject):
     
    
     def populateEquipments(self):
-                    
+
         # Check if we have this search option available
         if self.equipmentLayer is None:
-            self.dlg.searchPlusTabMain.removeTab(2)  
+            for x in range(0,  self.dlg.searchPlusTabMain.count()):
+                if  self.dlg.searchPlusTabMain.widget(x).objectName() == "searchPlusEquipmentsTab":
+                    self.dlg.searchPlusTabMain.removeTab(x)
+                    break
             return      
         
         # Get layer features        
@@ -446,10 +460,13 @@ class SearchPlus(QObject):
                 
         
     def populateToponyms(self):
-                                
+
         # Check if we have this search option available
         if self.placenameLayer is None:
-            self.dlg.searchPlusTabMain.removeTab(1)  
+            for x in range(0, self.dlg.searchPlusTabMain.count()):
+                if self.dlg.searchPlusTabMain.widget(x).objectName() == "searchPlusToponimsTab":
+                    self.dlg.searchPlusTabMain.removeTab(x)
+                    break
             return      
         
         # Get layer features        
@@ -488,12 +505,14 @@ class SearchPlus(QObject):
                         
                     
     def populateStreets(self):
-        
         # Check if we have this search option available
         if self.streetLayer is None or self.portalLayer is None:
-            self.dlg.searchPlusTabMain.removeTab(0)  
+            for x in range(0, self.dlg.searchPlusTabMain.count()):
+                if self.dlg.searchPlusTabMain.widget(x).objectName() == "searchPlusStreetsTab":
+                    self.dlg.searchPlusTabMain.removeTab(x)
+                    break
             return
-        
+
         # Get layer features
         layer = self.streetLayer
         records = [(-1, '', '', '')]
@@ -505,16 +524,16 @@ class SearchPlus(QObject):
             attrs = feature.attributes()
             field_id = attrs[idx_id]    
             field_name = attrs[idx_field_name]    
-            field_code = attrs[idx_field_code]  
-            if (not (type(field_code) is NULL)) and geom is not None:
+            field_code = attrs[idx_field_code]
+            # if (not (type(field_code) is NULL)) and geom is not None and (not (type(field_id) is NULL)) and (not (type(field_name) is NULL)):
+            if field_id not in ['NULL', None] and field_name not in ['NULL', None] and field_code not in ['NULL', None] and geom not in ['NULL', None]:
                 elem = [field_id, field_name, field_code, geom.asWkt()]
                 records.append(elem)
 
         # Fill street combo
         self.dlg.cboStreet.blockSignals(True)
         self.dlg.cboStreet.clear()
-        records_sorted = sorted(records, key = operator.itemgetter(1)) 
-
+        records_sorted = sorted(records, key = operator.itemgetter(1))
         error=[]
         for i in range(len(records_sorted)):
             record = records_sorted[i]
@@ -533,7 +552,10 @@ class SearchPlus(QObject):
 
     def populatePlots(self):
         if self.plotLayer is None or self.coreLayer is None:
-            self.dlg.searchPlusTabMain.removeTab(4)
+            for x in range(0,  self.dlg.searchPlusTabMain.count()):
+                if  self.dlg.searchPlusTabMain.widget(x).objectName() == "searchPlusPlotsTab":
+                    self.dlg.searchPlusTabMain.removeTab(x)
+                    break
             return
 
         # Get layer features
