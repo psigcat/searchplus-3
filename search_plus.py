@@ -998,14 +998,15 @@ class SearchPlus(QObject):
             message = self.tr('Element {} does not exist'.format(cadastre))
             self.iface.messageBar().pushMessage(message, Qgis.Warning, 5)
             return
-        
-        # select this feature in order to copy to memory layer        
-        aux = "id = "+str(elem[0]) 
-        expr = QgsExpression(aux)     
-        if expr.hasParserError():   
-            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)        
-            return    
-        
+
+        # select this feature in order to copy to memory layer
+        aux = self.CADASTRE_FIELD_CODE + "='" + str(elem[0]) + "'"
+
+        expr = QgsExpression(aux)
+        if expr.hasParserError():
+            self.iface.messageBar().pushMessage(expr.parserErrorString() + ": " + aux, self.app_name, Qgis.Warning, 5)
+            return
+
         # Get a featureIterator from an expression
         # Build a list of feature Ids from the previous result       
         # Select features with the ids obtained             
